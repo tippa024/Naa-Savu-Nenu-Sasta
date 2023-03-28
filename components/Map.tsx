@@ -16,6 +16,25 @@ function Map() {
     //decalre a boolean variable to check if the user has checked in
     const [checkedIn, setCheckedIn] = React.useState(false);
 
+    //declare a variable to store the name of the marker
+    const [markerName, setMarkerName] = React.useState('');
+
+    //declare a variable to store the category of the marker
+    const [category, setCategory] = React.useState("");
+
+    const categoryOptions = [
+        "House",
+        "Cafe",
+        "Coffee Shop",
+        "Restaurant",
+        "Desserts",
+        "Patisserie",
+        "Breakfast",
+        "Park",
+        "Vibes",
+        "Religious Place",
+    ];
+
 
 
     //import locations from localStorage   
@@ -57,7 +76,12 @@ function Map() {
         const existingLocations = JSON.parse(localStorage.getItem("locations") || "[]");
 
         //add new location to the array
-        existingLocations.push(location);
+        existingLocations.push({
+            latitude: location?.latitude,
+            longitude: location?.longitude,
+            name: markerName,
+            category: category
+        });
 
         //save the updated array to localStorage
         localStorage.setItem("locations", JSON.stringify(existingLocations));
@@ -66,6 +90,8 @@ function Map() {
         setCheckedInPoints((prevPoints: any) => [...prevPoints, {
             latitude: existingLocations[existingLocations.length - 1].latitude,
             longitude: existingLocations[existingLocations.length - 1].longitude,
+            name: existingLocations[existingLocations.length - 1].name,
+            category: existingLocations[existingLocations.length - 1].category
         },
         ]);
 
@@ -74,19 +100,19 @@ function Map() {
     const deleteMarker = (index: number) => {
         // remove marker from checkedinpoints state array
         setCheckedInPoints((prevPoints: any) => {
-          const newPoints = [...prevPoints];
-          newPoints.splice(index, 1);
-          return newPoints;
+            const newPoints = [...prevPoints];
+            newPoints.splice(index, 1);
+            return newPoints;
         });
-      
+
         // remove marker from local storage
         if (typeof window !== 'undefined') {
-          const existingLocations = JSON.parse(localStorage.getItem('locations') || '[]');
-          existingLocations.splice(index, 1);
-          localStorage.setItem('locations', JSON.stringify(existingLocations));
+            const existingLocations = JSON.parse(localStorage.getItem('locations') || '[]');
+            existingLocations.splice(index, 1);
+            localStorage.setItem('locations', JSON.stringify(existingLocations));
         }
-      };
-      
+    };
+
 
 
 
@@ -136,15 +162,27 @@ function Map() {
 
                         />
                     )}
-                    {checkedinpoints.map((point: { latitude: number | undefined; longitude: number | undefined; }, index: React.Key | null | undefined) => (
-                        <Marker
+                    {checkedinpoints.map((point: { latitude: number ; longitude: number; name: string; category: string }, index:number) => (
+                        <><Marker
                             key={index}
                             latitude={point.latitude}
                             longitude={point.longitude}
                             scale={0.4}
                             color="white"
-                            onClick={() => deleteMarker(parseInt(index as string))}
-                        />
+                            onClick={() => deleteMarker(index)} 
+                            />
+                            
+                            <Popup
+                                latitude={point.latitude}
+                                longitude={point.longitude}
+                                closeButton={true}
+                                anchor="bottom"
+                            >
+                                <div>
+                                    <h2>{point.name}</h2>
+                                    <p>{point.category}</p>
+                                </div>
+                            </Popup></>
                     ))}
 
 
@@ -160,12 +198,36 @@ function Map() {
                 </button>)
             }
             {
-                checkedIn && (<button
-                    className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                    onClick={() => { { setCheckedIn(false); saveCheckIn() } }}
+                checkedIn &&
+                (
+                    <button
+                        className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                        onClick={() => { { setCheckedIn(false); saveCheckIn() } }}
+                    >
+                        Confirm
+                    </button>)
+            }
+            {
+                checkedIn &&
+
+                (<input className="absolute top-1 left-1/2 transform -translate-x-1/2 z-10 rounded-md bg-white text-black placeholder-gray-500" placeholder="Enter Name" type="text" onChange={(e) => setMarkerName(e.target.value)} />
+                )
+            }
+            {
+                checkedIn &&
+
+                (<select className="absolute top-10 left-1/2 transform -translate-x-1/2 z-10 rounded-md bg-white text-black placeholder-gray-500"
+                    value={category}
+                    onChange={(e) => setCategory(e.target.value)}
                 >
-                    Confirm
-                </button>)
+                    <option value="">Select Category</option>
+                    {categoryOptions.map((option) => (
+                        <option key={option} value={option}>
+                            {option}
+                        </option>
+                    ))}
+                </select>
+                )
             }
 
 

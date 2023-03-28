@@ -71,6 +71,25 @@ function Map() {
 
     };
 
+    const deleteMarker = (index: number) => {
+        // remove marker from checkedinpoints state array
+        setCheckedInPoints((prevPoints: any) => {
+          const newPoints = [...prevPoints];
+          newPoints.splice(index, 1);
+          return newPoints;
+        });
+      
+        // remove marker from local storage
+        if (typeof window !== 'undefined') {
+          const existingLocations = JSON.parse(localStorage.getItem('locations') || '[]');
+          existingLocations.splice(index, 1);
+          localStorage.setItem('locations', JSON.stringify(existingLocations));
+        }
+      };
+      
+
+
+
     return (
         <div className="relative h-screen w-full">
             <div className="absolute z-1 h-full w-full">
@@ -122,8 +141,9 @@ function Map() {
                             key={index}
                             latitude={point.latitude}
                             longitude={point.longitude}
-                            scale={0.1}
-                            color="black"
+                            scale={0.4}
+                            color="white"
+                            onClick={() => deleteMarker(parseInt(index as string))}
                         />
                     ))}
 

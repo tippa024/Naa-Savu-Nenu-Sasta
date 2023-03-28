@@ -16,8 +16,25 @@ function Map() {
     //decalre a boolean variable to check if the user has checked in
     const [checkedIn, setCheckedIn] = React.useState(false);
 
+    React.useEffect(() => {
+        //get saved location data from localStorage or initialize an empty array
+        const savedLocations = JSON.parse(localStorage.getItem("locations") || "[]");
+
+        //map through saved locations to render markers
+        const markers = savedLocations.map((savedLocation: { latitude: number; longitude: number }, index: number) => (
+            <Marker key={index} latitude={savedLocation.latitude} longitude={savedLocation.longitude}>
+                <img src="https://img.icons8.com/ios/50/000000/marker.png" alt="marker" />
+            </Marker>
+             //render the markers on the map
+        setMarkers(markers);
+        ));
+    }, [])
+
+      //initialize markers state
+  const [markers, setMarkers] = React.useState<JSX.Element[]>([]);
+
     //getting current location
-      React.useEffect(() => {
+    React.useEffect(() => {
         if (navigator.geolocation && checkedIn) {
             navigator.geolocation.getCurrentPosition(
                 position => {
@@ -28,13 +45,25 @@ function Map() {
                     console.log(`Error getting location: ${error.message}`);
                 }
             );
-        } 
+        }
     }, [checkedIn]);
 
     //function to handle check in
     const handleCheckIn = (location: { latitude: number; longitude: number }) => {
         console.log(location);
         setCheckedIn(true);
+    };
+    //function to save the location to localStorage
+    const saveCheckIn = () => {
+        //get existing location data from localStorage or initialize an empty array
+        const existingLocations = JSON.parse(localStorage.getItem("locations") || "[]");
+
+        //add new location to the array
+        existingLocations.push(location);
+
+        //save the updated array to localStorage
+        localStorage.setItem("locations", JSON.stringify(existingLocations));
+
     };
 
     return (
@@ -76,22 +105,28 @@ function Map() {
                                 const newLat = e.lngLat.lat;
                                 setLocation({ latitude: newLat, longitude: newLng });
                             }}
+                            //style={{backgroundImage: "url('https://img.icons8.com/ios/50/000000/marker.png')", backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '50px', height: '50px'}}
+                            scale={1}
+                            color="red"
 
                         />
                     )}
 
                 </Mapbox>
             </div >
-            <button
-                className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100"
-                onClick={() => handleCheckIn(location!)}
-            >
-                Check-In
-            </button>
+            {
+                checkedIn === false &&
+                (<button
+                    className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10  text-white text-opacity-25 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                    onClick={() => handleCheckIn(location!)}
+                >
+                    Check-In
+                </button>)
+            }
             {
                 checkedIn && (<button
-                    className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-20 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100"
-                    onClick={() =>{setCheckedIn(false)}}
+                    className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                    onClick={() => { { setCheckedIn(false); saveCheckIn() } }}
                 >
                     Confirm
                 </button>)

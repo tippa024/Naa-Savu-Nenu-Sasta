@@ -19,7 +19,7 @@ function Map() {
 
 
     //import locations from localStorage   
-    const [checkedinpoints] = React.useState(() => {
+    const [checkedinpoints, setCheckedInPoints] = React.useState(() => {
         if (typeof window !== 'undefined') {
             const existingLocations = JSON.parse(localStorage.getItem("locations") || "[]");
             console.log(existingLocations);
@@ -61,6 +61,13 @@ function Map() {
 
         //save the updated array to localStorage
         localStorage.setItem("locations", JSON.stringify(existingLocations));
+
+        // add new location to the checkedinpoints array
+        setCheckedInPoints((prevPoints: any) => [...prevPoints, {
+            latitude: existingLocations[existingLocations.length - 1].latitude,
+            longitude: existingLocations[existingLocations.length - 1].longitude,
+        },
+        ]);
 
     };
 
@@ -135,7 +142,7 @@ function Map() {
             {
                 checkedIn && (<button
                     className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                    onClick={() => { { setCheckedIn(false); saveCheckIn(); checkedinpoints } }}
+                    onClick={() => { { setCheckedIn(false); saveCheckIn() } }}
                 >
                     Confirm
                 </button>)

@@ -6,10 +6,11 @@ interface LocationMarkerProps {
 }
 
 const LocationMarker: React.FC<LocationMarkerProps> = ({ onCheckIn }) => {
-  console.log('Rendering LocationMarker component...');
+  //console.log('Rendering LocationMarker component...');
   const [marker, setMarker] = useState<JSX.Element | null>(null);
 
   const createMarker = (latitude: number, longitude: number) => {
+    console.log("Rendering createMarker Funtion...");
     const newMarker = (
       <Marker
         longitude={longitude}

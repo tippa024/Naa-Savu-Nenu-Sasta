@@ -14,6 +14,22 @@ function Map() {
         setLocation({ latitude, longitude });
     };
 
+    React.useEffect(() => {
+        if (navigator.geolocation) {
+          navigator.geolocation.getCurrentPosition(
+            position => {
+              const { latitude, longitude } = position.coords;
+              setLocation({ latitude, longitude });
+            },
+            error => {
+              console.log(`Error getting location: ${error.message}`);
+            }
+          );
+        } else {
+          console.log("Geolocation is not supported.");
+        }
+      }, []);
+
 
 
     const [location, setLocation] = React.useState<{ latitude: number; longitude: number } | null>(null);
@@ -34,7 +50,7 @@ function Map() {
                             trackUserLocation={true}
                             positionOptions={{ enableHighAccuracy: true }}
                             position="bottom-right"
-                            //showUserLocation={true}
+                            showUserLocation={true}
                             showAccuracyCircle={true}
                             showUserHeading={true}
                             style={{ position: "absolute", bottom: "40px", right: "10px", background: 'none', padding: '2' }}

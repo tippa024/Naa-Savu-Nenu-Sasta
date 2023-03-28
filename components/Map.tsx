@@ -1,7 +1,7 @@
-import React, { useState } from "react";
+import React from "react";
 import Mapbox, { GeolocateControl, NavigationControl, Marker, Popup } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import LocationMarker from "./LocationMarker";
+
 
 function Map() {
     const [viewState, setViewState] = React.useState({
@@ -16,22 +16,19 @@ function Map() {
     //decalre a boolean variable to check if the user has checked in
     const [checkedIn, setCheckedIn] = React.useState(false);
 
-    React.useEffect(() => {
-        //get saved location data from localStorage or initialize an empty array
-        const savedLocations = JSON.parse(localStorage.getItem("locations") || "[]");
 
-        //map through saved locations to render markers
-        const markers = savedLocations.map((savedLocation: { latitude: number; longitude: number }, index: number) => (
-            <Marker key={index} latitude={savedLocation.latitude} longitude={savedLocation.longitude}>
-                <img src="https://img.icons8.com/ios/50/000000/marker.png" alt="marker" />
-            </Marker>
-             //render the markers on the map
-        setMarkers(markers);
-        ));
-    }, [])
 
-      //initialize markers state
-  const [markers, setMarkers] = React.useState<JSX.Element[]>([]);
+    //import locations from localStorage   
+    const [checkedinpoints] = React.useState(() => {
+        if (typeof window !== 'undefined') {
+            const existingLocations = JSON.parse(localStorage.getItem("locations") || "[]");
+            console.log(existingLocations);
+            return existingLocations;
+        } else {
+            return [];
+        }
+    });
+
 
     //getting current location
     React.useEffect(() => {
@@ -55,6 +52,7 @@ function Map() {
     };
     //function to save the location to localStorage
     const saveCheckIn = () => {
+
         //get existing location data from localStorage or initialize an empty array
         const existingLocations = JSON.parse(localStorage.getItem("locations") || "[]");
 
@@ -94,6 +92,7 @@ function Map() {
                         visualizePitch={true}
                         style={{ position: "absolute", bottom: "80px", right: "10px", background: 'none', border: 'none', padding: '2' }}
                     />
+
                     {checkedIn && location && (
                         <Marker
 
@@ -111,6 +110,16 @@ function Map() {
 
                         />
                     )}
+                    {checkedinpoints.map((point: { latitude: number | undefined; longitude: number | undefined; }, index: React.Key | null | undefined) => (
+                        <Marker
+                            key={index}
+                            latitude={point.latitude}
+                            longitude={point.longitude}
+                            scale={0.1}
+                            color="black"
+                        />
+                    ))}
+
 
                 </Mapbox>
             </div >
@@ -126,7 +135,7 @@ function Map() {
             {
                 checkedIn && (<button
                     className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                    onClick={() => { { setCheckedIn(false); saveCheckIn() } }}
+                    onClick={() => { { setCheckedIn(false); saveCheckIn(); checkedinpoints } }}
                 >
                     Confirm
                 </button>)

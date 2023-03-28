@@ -9,36 +9,35 @@ function Map() {
         latitude: 17.408,
         zoom: 1,
     });
- 
-    //initializing location state
-    const [location, setLocation] = React.useState<{latitude: number, longitude: number}>();
 
-    //getting current location
-    React.useEffect(() => {
-        if (navigator.geolocation) {
-          navigator.geolocation.getCurrentPosition(
-            position => {
-              const { latitude, longitude } = position.coords;
-              setLocation({ latitude, longitude });
-            },
-            error => {
-              console.log(`Error getting location: ${error.message}`);
-            }
-          );
-        } else {
-          console.log("Geolocation is not supported.");
-        }
-      }, []);
+    //initializing location state
+    const [location, setLocation] = React.useState<{ latitude: number, longitude: number }>();
 
     //decalre a boolean variable to check if the user has checked in
     const [checkedIn, setCheckedIn] = React.useState(false);
 
+    //getting current location
+      React.useEffect(() => {
+        if (navigator.geolocation && checkedIn) {
+            navigator.geolocation.getCurrentPosition(
+                position => {
+                    const { latitude, longitude } = position.coords;
+                    setLocation({ latitude, longitude });
+                },
+                error => {
+                    console.log(`Error getting location: ${error.message}`);
+                }
+            );
+        } 
+    }, [checkedIn]);
+
+    //function to handle check in
     const handleCheckIn = (location: { latitude: number; longitude: number }) => {
         console.log(location);
         setCheckedIn(true);
-  };
-      
-     return (
+    };
+
+    return (
         <div className="relative h-screen w-full">
             <div className="absolute z-1 h-full w-full">
                 <Mapbox
@@ -66,9 +65,9 @@ function Map() {
                         visualizePitch={true}
                         style={{ position: "absolute", bottom: "80px", right: "10px", background: 'none', border: 'none', padding: '2' }}
                     />
-                    {checkedIn  && location && (
+                    {checkedIn && location && (
                         <Marker
-                      
+
                             latitude={location.latitude}
                             longitude={location.longitude}
                             draggable
@@ -76,8 +75,8 @@ function Map() {
                                 const newLng = e.lngLat.lng;
                                 const newLat = e.lngLat.lat;
                                 setLocation({ latitude: newLat, longitude: newLng });
-                              }}
-                              
+                            }}
+
                         />
                     )}
 
@@ -89,6 +88,14 @@ function Map() {
             >
                 Check-In
             </button>
+            {
+                checkedIn && (<button
+                    className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-20 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100"
+                    onClick={() =>{setCheckedIn(false)}}
+                >
+                    Confirm
+                </button>)
+            }
 
 
         </div >

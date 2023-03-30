@@ -1,5 +1,5 @@
 import React from "react";
-import Mapbox, { GeolocateControl, NavigationControl, Marker, Popup } from "react-map-gl";
+import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 
 
@@ -17,10 +17,13 @@ function Map() {
     const [checkedIn, setCheckedIn] = React.useState(false);
 
     //declare a variable to store the name of the marker
-    const [markerName, setMarkerName] = React.useState('');
+    const [markerName, setMarkerName] = React.useState('null');
 
     //declare a variable to store the category of the marker
-    const [category, setCategory] = React.useState("");
+    const [category, setCategory] = React.useState('null');
+
+    //declare a boolean variable to check if broswer supports geolocation
+    const [geolocationSupported, setGeolocationSupported] = React.useState(false);
 
     const categoryOptions = [
         "House",
@@ -41,13 +44,100 @@ function Map() {
     const [checkedinpoints, setCheckedInPoints] = React.useState(() => {
         if (typeof window !== 'undefined') {
             const existingLocations = JSON.parse(localStorage.getItem("locations") || "[]");
-            console.log(existingLocations);
+            //console.log(existingLocations);
             return existingLocations;
         } else {
             return [];
         }
     });
 
+    // geojson object to store the location data
+    const checkInGeoJson = {
+        type: 'FeatureCollection',
+        features: checkedinpoints.map((point: { longitude: number; latitude: number; name: string; category: string; }, index: React.Key) => ({
+            id: index,
+            type: 'Feature',
+            geometry: {
+                type: 'Point',
+                coordinates: [point.longitude, point.latitude],
+            },
+            properties: {
+                name: point.name,
+                category: point.category,
+            },
+        
+        })),
+    };
+    //console.log(checkInGeoJson);
+
+    //checkinlayer
+
+    const checkinLayer = {
+
+        id: 'checkinlayer',
+        type: 'symbol',
+        layout: {
+            "icon-image": [
+              "step",
+              ["zoom"],
+              "1F607",
+              6,
+              "Fallback",
+              7,
+              [
+                "match",
+                ["get", "category"],
+                ["Coffee Shop"],
+                "CoffeeShop",
+                ["Cafe"],
+                "Cafe",
+                ["Shopping Mall"],
+                "Shopping",
+                ["House"],
+                "House",
+                ["Temple"],
+                "Temple",
+                "Fallback",
+              ],
+              22,
+              [
+                "match",
+                ["get", "category"],
+                ["Coffee Shop"],
+                "CoffeeShop",
+                ["Cafe"],
+                "Cafe",
+                ["Shopping Mall"],
+                "Shopping",
+                ["House"],
+                "House",
+                ["Temple"],
+                "Temple",
+                "Fallback",
+              ],
+            ],
+            "icon-size": [
+              "interpolate",
+              ["linear"],
+              ["zoom"],
+              0,
+              0.1,
+              8,
+              0.5,
+              22,
+              1,
+            ],
+            "text-field": ["get", "name"],
+            "text-font": ["Open Sans Condensed Light", "Arial Unicode MS Bold"],
+            "text-offset": [0, 1.2],
+            "text-anchor": "top",
+          },
+          paint: {
+            // Data-driven styling based on zoom level
+  
+            "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0, 13, 1],
+          },
+    }
 
     //getting current location
     React.useEffect(() => {
@@ -56,6 +146,7 @@ function Map() {
                 position => {
                     const { latitude, longitude } = position.coords;
                     setLocation({ latitude, longitude });
+                    setGeolocationSupported(true);
                 },
                 error => {
                     console.log(`Error getting location: ${error.message}`);
@@ -65,38 +156,47 @@ function Map() {
     }, [checkedIn]);
 
     //function to handle check in
-    const handleCheckIn = (location: { latitude: number; longitude: number }) => {
-        console.log(location);
+    const handleCheckIn = () => {
         setCheckedIn(true);
     };
     //function to save the location to localStorage
     const saveCheckIn = () => {
 
-        //get existing location data from localStorage or initialize an empty array
-        const existingLocations = JSON.parse(localStorage.getItem("locations") || "[]");
 
-        //add new location to the array
-        existingLocations.push({
-            latitude: location?.latitude,
-            longitude: location?.longitude,
-            name: markerName,
-            category: category
-        });
+        if (markerName != 'null' && category != 'null') {
+            //get existing location data from localStorage or initialize an empty array
+            const existingLocations = JSON.parse(localStorage.getItem("locations") || "[]");
 
-        //save the updated array to localStorage
-        localStorage.setItem("locations", JSON.stringify(existingLocations));
+            //add new location to the array to save to localStorage
+            existingLocations.push({
+                latitude: location?.latitude,
+                longitude: location?.longitude,
+                name: markerName,
+                category: category
+            });
+            //console.log("1", location?.latitude, location?.longitude, markerName, category)
 
-        // add new location to the checkedinpoints array
-        setCheckedInPoints((prevPoints: any) => [...prevPoints, {
-            latitude: existingLocations[existingLocations.length - 1].latitude,
-            longitude: existingLocations[existingLocations.length - 1].longitude,
-            name: existingLocations[existingLocations.length - 1].name,
-            category: existingLocations[existingLocations.length - 1].category
-        },
-        ]);
 
+            //save the updated array to localStorage
+            localStorage.setItem("locations", JSON.stringify(existingLocations));
+
+            // add new location to the checkedinpoints array to show on map
+            setCheckedInPoints((prevPoints: any) => [...prevPoints, {
+                latitude: location?.latitude,
+                longitude: location?.longitude,
+                name: markerName,
+                category: category
+            },
+                //console.log("2", location?.latitude, location?.longitude, markerName, category)
+            ]);
+
+        };
+
+        //reset markerName and category
+        setMarkerName('null')
+        setCategory('null')
     };
-
+    //function to delete marker
     const deleteMarker = (index: number) => {
         // remove marker from checkedinpoints state array
         setCheckedInPoints((prevPoints: any) => {
@@ -111,10 +211,9 @@ function Map() {
             existingLocations.splice(index, 1);
             localStorage.setItem('locations', JSON.stringify(existingLocations));
         }
+
+
     };
-
-
-
 
     return (
         <div className="relative h-screen w-full">
@@ -162,46 +261,28 @@ function Map() {
 
                         />
                     )}
-                    {checkedinpoints.map((point: { latitude: number ; longitude: number; name: string; category: string }, index:number) => (
-                        <><Marker
-                            key={index}
-                            latitude={point.latitude}
-                            longitude={point.longitude}
-                            scale={0.4}
-                            color="white"
-                            onClick={() => deleteMarker(index)} 
-                            />
-                            
-                            <Popup
-                                latitude={point.latitude}
-                                longitude={point.longitude}
-                                closeButton={true}
-                                anchor="bottom"
-                            >
-                                <div>
-                                    <h2>{point.name}</h2>
-                                    <p>{point.category}</p>
-                                </div>
-                            </Popup></>
-                    ))}
+              
+                    <Source id="places" type="geojson" data={checkInGeoJson.features}>
+                    <Layer {...checkinLayer} />
+                    </Source>
 
 
                 </Mapbox>
             </div >
-            {
+            {   //checkin button
                 checkedIn === false &&
                 (<button
-                    className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10  text-white text-opacity-25 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                    onClick={() => handleCheckIn(location!)}
+                    className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10  text-white text-opacity-25 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                    onClick={() => handleCheckIn()}
                 >
                     Check-In
                 </button>)
             }
-            {
-                checkedIn &&
+            {   //confirm button
+                checkedIn && location &&
                 (
                     <button
-                        className="absolute bottom-12 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                        className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
                         onClick={() => { { setCheckedIn(false); saveCheckIn() } }}
                     >
                         Confirm
@@ -210,28 +291,36 @@ function Map() {
             {
                 checkedIn &&
 
-                (<input className="absolute top-1 left-1/2 transform -translate-x-1/2 z-10 rounded-md bg-white text-black placeholder-gray-500" placeholder="Enter Name" type="text" onChange={(e) => setMarkerName(e.target.value)} />
+                //input field for marker name
+                (
+                    <div className="">
+                        <input className="absolute bottom-20 inset-x-0 transform  z-10 rounded-md bg-transparent border-b-2 text-center text-white  placeholder-gray-500 " placeholder="Enter Check-In Name" type="text" onChange={(e) => setMarkerName(e.target.value)} />
+                    </div>
                 )
             }
             {
+
+                //select field for marker category
                 checkedIn &&
 
-                (<select className="absolute top-10 left-1/2 transform -translate-x-1/2 z-10 rounded-md bg-white text-black placeholder-gray-500"
-                    value={category}
-                    onChange={(e) => setCategory(e.target.value)}
-                >
-                    <option value="">Select Category</option>
-                    {categoryOptions.map((option) => (
-                        <option key={option} value={option}>
-                            {option}
-                        </option>
-                    ))}
-                </select>
+                (
+                    <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
+                        <select className=" bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-white focus:border-white"
+                            value={category}
+                            onChange={(e) => setCategory(e.target.value)}
+                        >
+                            <option value="">Select Category</option>
+                            {categoryOptions.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
+                    </div>
                 )
-            }
-
-
+            }        
         </div >
+        
     );
 }
 

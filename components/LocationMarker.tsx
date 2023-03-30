@@ -6,7 +6,7 @@ interface LocationMarkerProps {
 }
 
 const LocationMarker: React.FC<LocationMarkerProps> = ({ onCheckIn }) => {
-  console.log('Rendering LocationMarker component...');
+  //console.log('Rendering LocationMarker component...');
   const [marker, setMarker] = useState<JSX.Element | null>(null);
 
   const createMarker = (latitude: number, longitude: number) => {
@@ -32,6 +32,27 @@ const LocationMarker: React.FC<LocationMarkerProps> = ({ onCheckIn }) => {
     );
     setMarker(newMarker);
     onCheckIn({ latitude, longitude });
+  };
+
+  const handleCheckIn = () => {
+    if (!navigator.geolocation) {
+      console.log("Geolocation is not supported by your browser.");
+      return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+      (position) => {
+        const { latitude, longitude } = position.coords;
+        createMarker(latitude, longitude);
+      },
+      () => {
+        console.log("Unable to retrieve your location.");
+      },
+      {
+        enableHighAccuracy: true,
+        timeout: 6000,
+      }
+    );
   };
 
   return <>{marker}</>;

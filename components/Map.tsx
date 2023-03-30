@@ -2,7 +2,7 @@ import React, { useState } from "react";
 import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { saveCheckInToFirestore, fetchCheckInsFromFirestore } from '@/firebase/firebaseHelpers';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import firebase from 'firebase/app';
 
@@ -35,19 +35,6 @@ function Map() {
     //declare a variable to store the user
     const [user, setUser] = useState<firebase.User | null>(null);
 
-    //auth
-    React.useEffect(() => {
-        const auth = getAuth();
-        const unsubscribe = onAuthStateChanged(auth, (loggedInUser) => {
-            setUser(loggedInUser);
-        });
-    
-        return () => {
-            unsubscribe();
-        };
-    }, []);
-    
-    
     //declare a variable to store the geoJSON data
     const [geoJSONData, setGeoJSONData] = React.useState<{
         type: string;
@@ -61,7 +48,7 @@ function Map() {
         type: "FeatureCollection",
         features: [],
     });
-    
+
 
 
     const categoryOptions = [
@@ -94,28 +81,42 @@ function Map() {
         }
     }, [checkedIn]);
 
-   
+
     //load check ins from firestore and update after every check in
     React.useEffect(() => {
         if (user) {
-          const loadCheckIns = async () => {
-            const checkIns = await fetchCheckInsFromFirestore(user.uid);
-            setGeoJSONData((prevState) => ({
-              ...prevState,
-              features: checkIns || [],
-            }));
-          };
-      
-          loadCheckIns();
-        } else {
-          setGeoJSONData((prevState) => ({
-            ...prevState,
-            features: [],
-          }));
-        }
-      }, [checkedIn, user]);
-      
+            const loadCheckIns = async () => {
+                const checkIns = await fetchCheckInsFromFirestore(user.uid);
+                setGeoJSONData((prevState) => ({
+                    ...prevState,
+                    features: checkIns || [],
+                }));
+            };
 
+            loadCheckIns();
+        } else {
+            setGeoJSONData((prevState) => ({
+                ...prevState,
+                features: [],
+            }));
+        }
+    }, [checkedIn, user]);
+
+    //auth
+    React.useEffect(() => {
+        const auth = getAuth();
+        const unsubscribe = onAuthStateChanged(auth, (loggedInUser) => {
+            setUser(loggedInUser);
+        });
+
+        return () => {
+            unsubscribe();
+        };
+    }, []);
+
+
+
+    //function to handle google sign in
     const handleGoogleSignIn = async () => {
         try {
             const provider = new GoogleAuthProvider();
@@ -124,7 +125,7 @@ function Map() {
             console.error('Error signing in:', error);
         }
     };
-    
+
     //function to handle check in
     const handleCheckIn = () => {
         if (!user) {
@@ -133,26 +134,40 @@ function Map() {
             setCheckedIn(true);
         }
     };
-    
-    //function to save the location to firestore
-    const saveCheckIn = async () => {
-        if (markerName !== "null" && category !== "null" && location && user) {
-          const checkInData = {
-            latitude: location.latitude,
-            longitude: location.longitude,
-            name: markerName,
-            category: category,
-          };
-      
-          await saveCheckInToFirestore(checkInData, user.uid);
-      
-          // Reset markerName and category
-          setMarkerName("null");
-          setCategory("null");
+
+    //function to handle check out
+    const handleLogout = async () => {
+        try {
+          const auth = getAuth();
+          await signOut(auth);
+        } catch (error) {
+          console.error('Error signing out:', error);
         }
       };
       
-      
+
+
+
+    //function to save the location to firestore
+    const saveCheckIn = async () => {
+        if (markerName !== "null" && category !== "null" && location && user) {
+            const checkInData = {
+                latitude: location.latitude,
+                longitude: location.longitude,
+                name: markerName,
+                category: category,
+                uid: user.uid,
+            };
+
+            await saveCheckInToFirestore(checkInData);
+
+            // Reset markerName and category
+            setMarkerName("null");
+            setCategory("null");
+        }
+    };
+
+
     return (
         <div className="relative h-screen w-full">
             <div className="absolute z-1 h-full w-full">
@@ -214,14 +229,14 @@ function Map() {
                             type="symbol"
                             source="checkIns"
                             layout={{
-                                    "icon-image": [
-                                      "step",
-                                      ["zoom"],
-                                      "1F607",
-                                      6,
-                                      "Fallback",
-                                      7,
-                                      [
+                                "icon-image": [
+                                    "step",
+                                    ["zoom"],
+                                    "1F607",
+                                    6,
+                                    "Fallback",
+                                    7,
+                                    [
                                         "match",
                                         ["get", "Category"],
                                         ["Coffee Shop"],
@@ -235,9 +250,9 @@ function Map() {
                                         ["Temple"],
                                         "Temple",
                                         "Fallback",
-                                      ],
-                                      22,
-                                      [
+                                    ],
+                                    22,
+                                    [
                                         "match",
                                         ["get", "Category"],
                                         ["Coffee Shop"],
@@ -251,24 +266,24 @@ function Map() {
                                         ["Temple"],
                                         "Temple",
                                         "Fallback",
-                                      ],
                                     ],
-                                    "icon-size": [
-                                      "interpolate",
-                                      ["linear"],
-                                      ["zoom"],
-                                      0,
-                                      0.1,
-                                      8,
-                                      0.5,
-                                      22,
-                                      1,
-                                    ],
-                                    "text-field": ["get", "Name"],
-                                    "text-font": ["Open Sans Condensed Light", "Arial Unicode MS Bold"],
-                                    "text-offset": [0, 1.2],
-                                    "text-anchor": "top",
-                                    }}
+                                ],
+                                "icon-size": [
+                                    "interpolate",
+                                    ["linear"],
+                                    ["zoom"],
+                                    0,
+                                    0.1,
+                                    8,
+                                    0.5,
+                                    22,
+                                    1,
+                                ],
+                                "text-field": ["get", "Name"],
+                                "text-font": ["Open Sans Condensed Light", "Arial Unicode MS Bold"],
+                                "text-offset": [0, 1.2],
+                                "text-anchor": "top",
+                            }}
                             paint={{
                                 "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0, 13, 1],
                             }}
@@ -294,7 +309,7 @@ function Map() {
                     (
                         <button
                             className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                            onClick={() => {  setCheckedIn(false); saveCheckIn() }}
+                            onClick={() => { setCheckedIn(false); saveCheckIn() }}
                         >
                             Confirm
                         </button>)
@@ -330,7 +345,17 @@ function Map() {
                         </div>
                     )
                 }
+
             </div>
+            {user &&
+
+                <button
+                    className="absolute top-2 right-2  z-10  text-white text-opacity-25 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                    onClick={() => handleLogout()}
+                >
+                    Logout
+                </button>
+            }
         </div >
 
     );

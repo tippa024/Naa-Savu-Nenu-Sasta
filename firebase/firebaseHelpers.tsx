@@ -18,15 +18,14 @@ function prepareCheckInData(id: string, data: { name: any; category: any; longit
   }
   
   export const saveCheckInToFirestore = async (
-    data: { latitude: number; longitude: number; name: string; category: string },
-    uid: string
+    data: { latitude: number; longitude: number; name: string; category: string, uid: string }
   ) => {
     try {
       const checkInCollection = collection(db, 'checkIns');
-      const newCheckInRef = await addDoc(checkInCollection, { ...data, uid });
+      const newCheckInRef = await addDoc(checkInCollection, { ...data});
       console.log(`New check-in added with ID: ${newCheckInRef.id}`);
   
-      const preparedData = prepareCheckInData(newCheckInRef.id, data, uid);
+      const preparedData = prepareCheckInData(newCheckInRef.id, data);
       // You can now use the preparedData in the desired format
       console.log(preparedData);
 
@@ -41,7 +40,7 @@ function prepareCheckInData(id: string, data: { name: any; category: any; longit
  {
     try {
         const checkInCollection = collection(db, "checkIns");
-        const q = query(checkInCollection, where("userId", "==", uid));
+        const q = query(checkInCollection, where("uid", "==", uid));
         const querySnapshot = await getDocs(q);
         const checkIns: { type: string; properties: { Name: any; Category: any; }; geometry: { coordinates: any[]; type: string; }; id: string; }[] = [];
 

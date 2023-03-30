@@ -2,7 +2,12 @@ import React, { useState } from "react";
 import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { saveCheckInToFirestore, fetchCheckInsFromFirestore } from '@/firebase/firebaseHelpers';
-import { FeatureCollection } from 'geojson';
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider } from 'firebase/auth';
+import { auth } from '@/firebase/firebaseConfig';
+import firebase from 'firebase/app';
+
+
+
 
 
 function Map() {
@@ -27,6 +32,23 @@ function Map() {
     //declare a boolean variable to check if broswer supports geolocation
     const [geolocationSupported, setGeolocationSupported] = React.useState(false);
 
+    //declare a variable to store the user
+    const [user, setUser] = useState<firebase.User | null>(null);
+
+    //auth
+    React.useEffect(() => {
+        const auth = getAuth();
+        const unsubscribe = onAuthStateChanged(auth, (loggedInUser) => {
+            setUser(loggedInUser);
+        });
+    
+        return () => {
+            unsubscribe();
+        };
+    }, []);
+    
+    
+    //declare a variable to store the geoJSON data
     const [geoJSONData, setGeoJSONData] = React.useState<{
         type: string;
         features: Array<{
@@ -73,67 +95,64 @@ function Map() {
     }, [checkedIn]);
 
    
-    //load check ins from firestore
+    //load check ins from firestore and update after every check in
     React.useEffect(() => {
-        const loadCheckIns = async () => {
-            const checkIns = await fetchCheckInsFromFirestore();
+        if (user) {
+          const loadCheckIns = async () => {
+            const checkIns = await fetchCheckInsFromFirestore(user.uid);
             setGeoJSONData((prevState) => ({
-                ...prevState,
-                features: checkIns || [],
+              ...prevState,
+              features: checkIns || [],
             }));
-            
-        };
+          };
+      
+          loadCheckIns();
+        } else {
+          setGeoJSONData((prevState) => ({
+            ...prevState,
+            features: [],
+          }));
+        }
+      }, [checkedIn, user]);
+      
 
-        loadCheckIns();
-    }, []);
-
-
-    //function to add new check in to map
-    const addNewCheckInToMap = (newCheckInData: { type: string; properties: { Name: any; Category: any; }; geometry: { coordinates: any[]; type: string; }; id: string; } | undefined) => {
-        setGeoJSONData((prevState) => {
-            const updatedFeatures = newCheckInData
-                ? [...prevState.features, newCheckInData]
-                : prevState.features;
-            return {
-                ...prevState,
-                features: updatedFeatures,
-            };
-        });
-        
-    };
-
-
-
-    //function to handle check in
-    const handleCheckIn = () => {
-        setCheckedIn(true);
-    };
-    //function to save the location to firestore
-    const saveCheckIn = async () => {
-        if (markerName !== 'null' && category !== 'null' && location) {
-            const checkInData = {
-                latitude: location.latitude,
-                longitude: location.longitude,
-                name: markerName,
-                category: category,
-            };
-
-            const newCheckInData = await saveCheckInToFirestore(checkInData);
-            addNewCheckInToMap(newCheckInData);
-
-            // Reset markerName and category
-            setMarkerName('null');
-            setCategory('null');
+    const handleGoogleSignIn = async () => {
+        try {
+            const provider = new GoogleAuthProvider();
+            await signInWithPopup(auth, provider);
+        } catch (error) {
+            console.error('Error signing in:', error);
         }
     };
-
-    const checkinLayer = {
-
-    }
-
-
-
-
+    
+    //function to handle check in
+    const handleCheckIn = () => {
+        if (!user) {
+            handleGoogleSignIn();
+        } else {
+            setCheckedIn(true);
+        }
+    };
+    
+    //function to save the location to firestore
+    const saveCheckIn = async () => {
+        if (markerName !== "null" && category !== "null" && location && user) {
+          const checkInData = {
+            latitude: location.latitude,
+            longitude: location.longitude,
+            name: markerName,
+            category: category,
+          };
+      
+          await saveCheckInToFirestore(checkInData, user.uid);
+      
+          // Reset markerName and category
+          setMarkerName("null");
+          setCategory("null");
+        }
+      };
+      
+      
     return (
         <div className="relative h-screen w-full">
             <div className="absolute z-1 h-full w-full">
@@ -204,7 +223,7 @@ function Map() {
                                       7,
                                       [
                                         "match",
-                                        ["get", "category"],
+                                        ["get", "Category"],
                                         ["Coffee Shop"],
                                         "CoffeeShop",
                                         ["Cafe"],
@@ -220,7 +239,7 @@ function Map() {
                                       22,
                                       [
                                         "match",
-                                        ["get", "category"],
+                                        ["get", "Category"],
                                         ["Coffee Shop"],
                                         "CoffeeShop",
                                         ["Cafe"],

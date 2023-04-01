@@ -18,8 +18,8 @@ const YouTubeAudio: React.FC= () => {
   const playerRef = useRef<any>(null);
 
   const opts = {
-    height: '0', // Set height to screen height
-    width: '0', // Set width to '0' to only play audio
+    height: '1080', // Set height to screen height
+    width: '1920', // Set width to '0' to only play audio
     playerVars: {
       autoplay: 0, // Do not auto-play the video
       controls: 0, // Hide controls
@@ -53,9 +53,9 @@ const YouTubeAudio: React.FC= () => {
   };
   
   return (
-    <div>
-      <YouTube className='absolute top-10' videoId={videoId} opts={opts} onReady={onReady} />
-      <button className="absolute top-1 left-1/2 transform -translate-x-1/2  text-gray-500 z-10" onClick={handleTogglePlay}>
+    <div className=''>
+      <YouTube className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 filter blur-xl saturate-150 brightness-20 ' videoId={videoId} opts={opts} onReady={onReady} />
+      <button className=" absolute top-2 left-1/2 transform -translate-x-1/2  text-white opacity-25" onClick={handleTogglePlay}>
         {play? <PauseIcon className="h-8" /> : <PlayIcon className="h-8" />}
   </button>
     </div>

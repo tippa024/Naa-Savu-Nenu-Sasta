@@ -1,7 +1,7 @@
 import React, { useState } from "react";
-import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source } from "react-map-gl";
+import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source, MapLayerMouseEvent } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { saveCheckInToFirestore, fetchCheckInsFromFirestore } from '@/firebase/firebaseHelpers';
+import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFirestore, deleteCheckInFromFirestore } from '@/firebase/firebaseHelpers';
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import firebase from 'firebase/app';
@@ -29,9 +29,6 @@ function Map() {
     //declare a variable to store the category of the marker
     const [category, setCategory] = React.useState('null');
 
-    //declare a boolean variable to check if broswer supports geolocation
-    const [geolocationSupported, setGeolocationSupported] = React.useState(false);
-
     //declare a variable to store the user
     const [user, setUser] = useState<firebase.User | null>(null);
 
@@ -40,14 +37,27 @@ function Map() {
         type: string;
         features: Array<{
             type: string;
-            properties: { Name: any; Category: any };
-            geometry: { coordinates: any[]; type: string };
+            properties: { Name: string; Category: string };
+            geometry: { coordinates: any; type: string };
             id: string;
         }>;
     }>({
         type: "FeatureCollection",
         features: [],
     });
+
+
+    //declare a variable to check the number of check ins
+    const [checkInCount, setCheckInCount] = React.useState(0);
+
+    //declare a boolean variable to check if the user wants to see the details of the check in
+    const [showDetails, setShowDetails] = useState(false);
+
+    //declare a variable to see if the user is editing a check in
+    const [editingCheckIn, setEditingCheckIn] = useState(null);
+
+    //declare a variable to see if the user is deleting a check in
+    const [deleteCheckIn, setDeleteCheckIn] = useState<CheckIn | null>(null);
 
 
 
@@ -72,7 +82,6 @@ function Map() {
                 position => {
                     const { latitude, longitude } = position.coords;
                     setLocation({ latitude, longitude });
-                    setGeolocationSupported(true);
                 },
                 error => {
                     console.log(`Error getting location: ${error.message}`);
@@ -90,17 +99,19 @@ function Map() {
                 setGeoJSONData((prevState) => ({
                     ...prevState,
                     features: checkIns || [],
+                
                 }));
             };
 
             loadCheckIns();
-        } else {
-            setGeoJSONData((prevState) => ({
-                ...prevState,
-                features: [],
-            }));
+            setCheckInCount(geoJSONData.features.length);
+            //console statement if check in count > 0
+            if (checkInCount > 0) {
+                console.log("You have checked in " + checkInCount + " times");
+            }
+            
         }
-    }, [checkedIn, user]);
+    }, [checkedIn, user, editingCheckIn === false, deleteCheckIn]);
 
     //auth
     React.useEffect(() => {
@@ -135,18 +146,15 @@ function Map() {
         }
     };
 
-    //function to handle check out
+    //function to handle logout
     const handleLogout = async () => {
         try {
-          const auth = getAuth();
-          await signOut(auth);
+            const auth = getAuth();
+            await signOut(auth);
         } catch (error) {
-          console.error('Error signing out:', error);
+            console.error('Error signing out:', error);
         }
-      };
-      
-
-
+    };
 
     //function to save the location to firestore
     const saveCheckIn = async () => {
@@ -167,6 +175,51 @@ function Map() {
         }
     };
 
+    //converting JSON to array to display checkinpoints as a list for edit/delet
+    const checkInsArray = geoJSONData.features.map((feature) => {
+        return {
+            name: feature.properties.Name,
+            category: feature.properties.Category,
+            coordinates: feature.geometry.coordinates,
+            id: feature.id,
+        };
+    });
+
+    //function to handle edit
+    const handleEdit = (checkIn) => {
+        if (editingCheckIn && editingCheckIn.id === checkIn.id) {
+            // Save the changes to Firebase
+            updateCheckInInFirestore(checkIn.id, {
+                latitude: checkIn.coordinates[1],
+                longitude: checkIn.coordinates[0],
+                name: checkIn.name,
+                category: checkIn.category,
+            }, user.uid);
+
+            // Reset the editing state
+            setEditingCheckIn(null);
+        } else {
+            setEditingCheckIn(checkIn);
+        }
+    };
+
+    //function to handle delete
+    const handleDelete = (checkIn) => {
+        if (deleteCheckIn && deleteCheckIn.id === checkIn.id) {
+            // Delete the check in from Firebase
+            deleteCheckInFromFirestore(checkIn.id);
+
+            // Reset the delete state
+            setDeleteCheckIn(null);
+        } else {
+            setDeleteCheckIn(checkIn);
+            
+        }
+
+        console.log(deleteCheckIn)
+    };
+
+
 
     return (
         <div className="relative h-screen w-full">
@@ -184,7 +237,6 @@ function Map() {
                         "space-color": "black",
                         "star-intensity": 0.1,
                     }}
-
                 >
                     <div>
                         <GeolocateControl
@@ -298,7 +350,7 @@ function Map() {
                 {   //checkin button
                     checkedIn === false &&
                     (<button
-                        className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10  text-white text-opacity-25 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                        className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10  text-gray-500 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
                         onClick={() => handleCheckIn()}
                     >
                         Check-In
@@ -320,7 +372,7 @@ function Map() {
                     //input field for marker name
                     (
                         <div className="">
-                            <input className="absolute bottom-20 inset-x-0 transform  z-10 rounded-md bg-transparent border-b-2 text-center text-white  placeholder-gray-500 " placeholder="Enter Check-In Name" type="text" onChange={(e) => setMarkerName(e.target.value)} />
+                            <input className="absolute bottom-20 inset-x-0 transform  z-10 rounded-md bg-transparent border-b-2 text-center text-gray-700  placeholder-gray-200 " placeholder="Enter Check-In Name" type="text" onChange={(e) => setMarkerName(e.target.value)} />
                         </div>
                     )
                 }
@@ -350,12 +402,93 @@ function Map() {
             {user &&
 
                 <button
-                    className="absolute top-2 right-2  z-10  text-white text-opacity-25 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                    className="absolute top-2 right-2  z-10  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
                     onClick={() => handleLogout()}
                 >
                     Logout
                 </button>
             }
+
+            {user && checkInCount > 0 &&
+
+                <button
+                    className="absolute top-2 left-2  z-10  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                    onClick={() => setShowDetails(true)}
+                >
+                    Edit CheckIn
+                </button>
+            }
+
+            {
+                showDetails &&
+                (
+                    <div className="flex flex-col absolute top-10 left-10 z-20 bg-white p-2 rounded-lg shadow hover:p-4 transitio duration-200">
+                        {checkInsArray.map((checkIn, index) => (
+                            <div key={index} className="flex p-2 mb-2 border-gray-200 border-b-2 rounded shadow-sm hover:shadow-xl hover:scale-105 transform transition duration-100">
+                                {editingCheckIn && editingCheckIn.id === checkIn.id ? (
+                                    <>
+                                        <input
+                                            type="text"
+                                            placeholder={checkIn.name}
+                                            onChange={(e) => checkIn.name = e.target.value}
+                                            className="flex-auto mb-2"
+                                        />
+                                        <select
+                                            placeholder={checkIn.category}
+                                            onChange={(e) => checkIn.category = e.target.value}
+                                            className="flex-auto mb-2"
+                                        >
+                                            <option value="">Select Category</option>
+                                            {categoryOptions.map((option) => (
+                                                <option key={option} value={option}>
+                                                    {option}
+                                                </option>
+                                            ))}
+                                        </select>
+                                    </>
+                                ) : (
+                                    <>
+                                        <div className="flex-auto flex flex-col basis-1/2">
+                                            <div className="basis-1/4">
+                                                <h3 className="font-semibold">{checkIn.name}</h3>
+                                            </div>
+                                            <div className="basis-1/4">
+                                                <h4 className="text-gray-500 text-sm text-light">{checkIn.category}</h4>
+                                            </div>
+                                        </div>
+                                    </>
+                                )}
+
+                                <div className="flex-auto flex flex-col px-2">
+                                    <button
+                                        className="px-2 py-1 mb-1 border-gray-100 border-2 hover:bg-gray-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
+                                        onClick={() => handleEdit(checkIn)}
+                                    >
+                                        {editingCheckIn && editingCheckIn.id === checkIn.id ? "Save" : "Edit"}
+                                    </button>
+                                    <button className="px-2 py-1 mt-1 border-red-300 border-2 hover:bg-red-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
+                                        onClick={() => handleDelete(checkIn)}
+                                    >
+                                        {deleteCheckIn && deleteCheckIn.id === checkIn.id ? "Confrim D" : "Delete"}
+                                    </button>
+                                </div>
+
+                            </div>
+                        ))}
+
+                        {!editingCheckIn || !deleteCheckIn (
+                            <button
+                                className="hover:bg-black hover:text-white px-1 py-1 rounded hover:scale-105 hover:transition hover:duration-100 active:scale-90 transition duration-100 active:shadow-xl"
+                                onClick={() => setShowDetails(false)}
+                            >
+                                Close
+                            </button>
+                        )}
+
+                    </div>
+                )
+            }
+
         </div >
 
     );

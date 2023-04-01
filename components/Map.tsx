@@ -5,6 +5,8 @@ import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFire
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import firebase from 'firebase/app';
+import YouTubeAudio from "./YouTubeAudio";
+
 
 type CheckIn = {
     id: string;
@@ -15,15 +17,18 @@ type CheckIn = {
     // ...
 };
 
-
-
-
 function Map() {
     const [viewState, setViewState] = React.useState({
         longitude: 78.4835,
         latitude: 17.408,
         zoom: 1,
     });
+
+    const videoUrl = 'https://www.youtube.com/watch?v=uPhsq1msjl8';
+
+    //const [fogColor, setFogColor] = React.useState("white");
+
+    const [isPlaying, setIsPlaying] = React.useState(false);
 
     //initializing location state
     const [location, setLocation] = React.useState<{ latitude: number, longitude: number }>();
@@ -193,7 +198,7 @@ function Map() {
             setEditingCheckIn(null);
         } else {
             setEditingCheckIn(checkIn);
-            setLocation({latitude: checkIn.latitude, longitude: checkIn.longitude});
+            setLocation({ latitude: checkIn.latitude, longitude: checkIn.longitude });
         }
     };
 
@@ -224,12 +229,21 @@ function Map() {
                     mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
                     fog={{
                         "horizon-blend": 0.027,
-                        color: "white",
+                        "color": 'white',
                         "high-color": "white",
                         "space-color": "black",
                         "star-intensity": 0.1,
                     }}
                 >
+                   {/*<AudioAnalyzer onFrequencyChange={setFogColor} isPlaying={isPlaying} />
+
+
+                    <button
+                        onClick={() => setIsPlaying((prevIsPlaying) => !prevIsPlaying)}
+                        className="absolute bottom-1/3 right-0 p-2 m-4 bg-white rounded shadow"
+                    >
+                        {isPlaying ? "Pause" : "Play"}
+                    </button>*/}
                     <div>
                         <GeolocateControl
                             trackUserLocation={true}
@@ -336,7 +350,19 @@ function Map() {
 
 
 
+                   
+
+                   
+
+
+
                 </Mapbox>
+                <div className="z-40">
+
+                <YouTubeAudio videoUrl={videoUrl} />
+
+                </div>
+               
             </div >
             <div className="absolute z-10 bottom-2 left-0 w-full">
                 {   //checkin button

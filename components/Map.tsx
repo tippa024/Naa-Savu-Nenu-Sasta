@@ -91,28 +91,23 @@ function Map() {
     }, [checkedIn]);
 
 
-    //load check ins from firestore and update after every check in
     React.useEffect(() => {
         if (user) {
             const loadCheckIns = async () => {
                 const checkIns = await fetchCheckInsFromFirestore(user.uid);
+    
                 setGeoJSONData((prevState) => ({
                     ...prevState,
                     features: checkIns || [],
-                
                 }));
+    
+                setCheckInCount(checkIns.length);
             };
-
+    
             loadCheckIns();
-            setCheckInCount(geoJSONData.features.length);
-            //console statement if check in count > 0
-            if (checkInCount > 0) {
-                console.log("You have checked in " + checkInCount + " times");
-            }
-            
         }
     }, [checkedIn, user, editingCheckIn === false, deleteCheckIn]);
-
+    
     //auth
     React.useEffect(() => {
         const auth = getAuth();
@@ -213,7 +208,7 @@ function Map() {
             setDeleteCheckIn(null);
         } else {
             setDeleteCheckIn(checkIn);
-            
+
         }
 
         console.log(deleteCheckIn)
@@ -420,7 +415,7 @@ function Map() {
             }
 
             {
-                showDetails &&
+                showDetails && checkInCount > 0 &&
                 (
                     <div className="flex flex-col absolute top-10 left-10 z-20 bg-white p-2 rounded-lg shadow hover:p-4 transitio duration-200">
                         {checkInsArray.map((checkIn, index) => (
@@ -476,7 +471,7 @@ function Map() {
                             </div>
                         ))}
 
-                        {!editingCheckIn || !deleteCheckIn (
+                        {!editingCheckIn &&  !deleteCheckIn  && (
                             <button
                                 className="hover:bg-black hover:text-white px-1 py-1 rounded hover:scale-105 hover:transition hover:duration-100 active:scale-90 transition duration-100 active:shadow-xl"
                                 onClick={() => setShowDetails(false)}

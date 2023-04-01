@@ -6,6 +6,14 @@ import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signO
 import { auth } from '@/firebase/firebaseConfig';
 import firebase from 'firebase/app';
 
+type CheckIn = {
+    id: string;
+    latitude: any[];
+    longitude: any[];
+    name: string;
+    category: string;
+    // ...
+};
 
 
 
@@ -95,19 +103,19 @@ function Map() {
         if (user) {
             const loadCheckIns = async () => {
                 const checkIns = await fetchCheckInsFromFirestore(user.uid);
-    
+
                 setGeoJSONData((prevState) => ({
                     ...prevState,
                     features: checkIns || [],
                 }));
-    
-                setCheckInCount(checkIns.length);
+
+                setCheckInCount(checkIns!.length);
             };
-    
+
             loadCheckIns();
         }
     }, [checkedIn, user, editingCheckIn === false, deleteCheckIn]);
-    
+
     //auth
     React.useEffect(() => {
         const auth = getAuth();
@@ -170,23 +178,13 @@ function Map() {
         }
     };
 
-    //converting JSON to array to display checkinpoints as a list for edit/delet
-    const checkInsArray = geoJSONData.features.map((feature) => {
-        return {
-            name: feature.properties.Name,
-            category: feature.properties.Category,
-            coordinates: feature.geometry.coordinates,
-            id: feature.id,
-        };
-    });
-
     //function to handle edit
     const handleEdit = (checkIn) => {
         if (editingCheckIn && editingCheckIn.id === checkIn.id) {
             // Save the changes to Firebase
             updateCheckInInFirestore(checkIn.id, {
-                latitude: checkIn.coordinates[1],
-                longitude: checkIn.coordinates[0],
+                latitude: checkIn.latitude,
+                longitude: checkIn.longitude,
                 name: checkIn.name,
                 category: checkIn.category,
             }, user.uid);
@@ -195,6 +193,7 @@ function Map() {
             setEditingCheckIn(null);
         } else {
             setEditingCheckIn(checkIn);
+            setLocation({latitude: checkIn.latitude, longitude: checkIn.longitude});
         }
     };
 
@@ -210,8 +209,6 @@ function Map() {
             setDeleteCheckIn(checkIn);
 
         }
-
-        console.log(deleteCheckIn)
     };
 
 
@@ -418,60 +415,69 @@ function Map() {
                 showDetails && checkInCount > 0 &&
                 (
                     <div className="flex flex-col absolute top-10 left-10 z-20 bg-white p-2 rounded-lg shadow hover:p-4 transitio duration-200">
-                        {checkInsArray.map((checkIn, index) => (
-                            <div key={index} className="flex p-2 mb-2 border-gray-200 border-b-2 rounded shadow-sm hover:shadow-xl hover:scale-105 transform transition duration-100">
-                                {editingCheckIn && editingCheckIn.id === checkIn.id ? (
-                                    <>
-                                        <input
-                                            type="text"
-                                            placeholder={checkIn.name}
-                                            onChange={(e) => checkIn.name = e.target.value}
-                                            className="flex-auto mb-2"
-                                        />
-                                        <select
-                                            placeholder={checkIn.category}
-                                            onChange={(e) => checkIn.category = e.target.value}
-                                            className="flex-auto mb-2"
+                        {geoJSONData.features.map((feature, index) => {
+                            const checkIn = {
+                                name: feature.properties.Name,
+                                category: feature.properties.Category,
+                                id: feature.id,
+                            };
+
+                            return (
+                                <div key={index} className="flex p-2 mb-2 border-gray-200 border-b-2 rounded shadow-sm hover:shadow-xl hover:scale-105 transform transition duration-100">
+                                    {editingCheckIn && editingCheckIn.id === checkIn.id ? (
+                                        <>
+                                            <input
+                                                type="text"
+                                                placeholder={checkIn.name}
+                                                onChange={(e) => checkIn.name = e.target.value}
+                                                className="flex-auto mb-2"
+                                            />
+                                            <select
+                                                placeholder={checkIn.category}
+                                                onChange={(e) => checkIn.category = e.target.value}
+                                                className="flex-auto mb-2"
+                                            >
+                                                <option value="">Select Category</option>
+                                                {categoryOptions.map((option) => (
+                                                    <option key={option} value={option}>
+                                                        {option}
+                                                    </option>
+                                                ))}
+                                            </select>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <div className="flex-auto flex flex-col basis-1/2">
+                                                <div className="basis-1/4">
+                                                    <h3 className="font-semibold">{checkIn.name}</h3>
+                                                </div>
+                                                <div className="basis-1/4">
+                                                    <h4 className="text-gray-500 text-sm text-light">{checkIn.category}</h4>
+                                                </div>
+                                            </div>
+                                        </>
+                                    )}
+
+                                    <div className="flex-auto flex flex-col px-2">
+                                        <button
+                                            className="px-2 py-1 mb-1 border-gray-100 border-2 hover:bg-gray-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
+                                            onClick={() => handleEdit(checkIn)}
                                         >
-                                            <option value="">Select Category</option>
-                                            {categoryOptions.map((option) => (
-                                                <option key={option} value={option}>
-                                                    {option}
-                                                </option>
-                                            ))}
-                                        </select>
-                                    </>
-                                ) : (
-                                    <>
-                                        <div className="flex-auto flex flex-col basis-1/2">
-                                            <div className="basis-1/4">
-                                                <h3 className="font-semibold">{checkIn.name}</h3>
-                                            </div>
-                                            <div className="basis-1/4">
-                                                <h4 className="text-gray-500 text-sm text-light">{checkIn.category}</h4>
-                                            </div>
-                                        </div>
-                                    </>
-                                )}
+                                            {editingCheckIn && editingCheckIn.id === checkIn.id ? "Save" : "Edit"}
+                                        </button>
+                                        <button className="px-2 py-1 mt-1 border-red-300 border-2 hover:bg-red-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
+                                            onClick={() => handleDelete(checkIn)}
+                                        >
+                                            {deleteCheckIn && deleteCheckIn.id === checkIn.id ? "Confrim D" : "Delete"}
+                                        </button>
+                                    </div>
 
-                                <div className="flex-auto flex flex-col px-2">
-                                    <button
-                                        className="px-2 py-1 mb-1 border-gray-100 border-2 hover:bg-gray-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
-                                        onClick={() => handleEdit(checkIn)}
-                                    >
-                                        {editingCheckIn && editingCheckIn.id === checkIn.id ? "Save" : "Edit"}
-                                    </button>
-                                    <button className="px-2 py-1 mt-1 border-red-300 border-2 hover:bg-red-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
-                                        onClick={() => handleDelete(checkIn)}
-                                    >
-                                        {deleteCheckIn && deleteCheckIn.id === checkIn.id ? "Confrim D" : "Delete"}
-                                    </button>
                                 </div>
+                            );
+                        })}
 
-                            </div>
-                        ))}
 
-                        {!editingCheckIn &&  !deleteCheckIn  && (
+                        {!editingCheckIn && !deleteCheckIn && (
                             <button
                                 className="hover:bg-black hover:text-white px-1 py-1 rounded hover:scale-105 hover:transition hover:duration-100 active:scale-90 transition duration-100 active:shadow-xl"
                                 onClick={() => setShowDetails(false)}

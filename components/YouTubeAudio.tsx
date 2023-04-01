@@ -42,8 +42,10 @@ const YouTubeAudio: React.FC= () => {
   const handleTogglePlay = () => {
     if (playerRef.current) {
       if (play) {
+        console.log('Pausing video');
         playerRef.current.pauseVideo();
       } else {
+        console.log('Playing video');
         playerRef.current.playVideo();
       }
       setPlay(!play);
@@ -52,9 +54,9 @@ const YouTubeAudio: React.FC= () => {
   
   return (
     <div>
-      <YouTube  videoId={videoId} opts={opts} onReady={onReady} />
+      <YouTube className='absolute top-10' videoId={videoId} opts={opts} onReady={onReady} />
       <button className="absolute top-1 left-1/2 transform -translate-x-1/2  text-gray-500 z-10" onClick={handleTogglePlay}>
-        {play? <PauseIcon className="h-10" /> : <PlayIcon className="h-10" />}
+        {play? <PauseIcon className="h-8" /> : <PlayIcon className="h-8" />}
   </button>
     </div>
   );

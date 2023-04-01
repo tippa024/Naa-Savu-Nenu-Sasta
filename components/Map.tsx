@@ -5,7 +5,6 @@ import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFire
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import firebase from 'firebase/app';
-import YouTubeAudio from "./YouTubeAudio";
 
 
 type CheckIn = {
@@ -24,7 +23,6 @@ function Map() {
         zoom: 1,
     });
 
-    const videoUrl = 'https://www.youtube.com/watch?v=uPhsq1msjl8';
 
     //const [fogColor, setFogColor] = React.useState("white");
 
@@ -348,21 +346,7 @@ function Map() {
                         />
                     </Source>
 
-
-
-                   
-
-                   
-
-
-
                 </Mapbox>
-                <div className="z-40">
-
-                <YouTubeAudio videoUrl={videoUrl} />
-
-                </div>
-               
             </div >
             <div className="absolute z-10 bottom-2 left-0 w-full">
                 {   //checkin button

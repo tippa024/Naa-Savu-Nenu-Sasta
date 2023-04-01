@@ -8,11 +8,7 @@ import firebase from 'firebase/app';
 import { PlayIcon, PauseIcon } from "@heroicons/react/24/outline";
 import YouTube, { YouTubeProps } from 'react-youtube';
 
-function getYouTubeVideoID(url: string): string | null {
-    const regex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-    const match = url.match(regex);
-    return match && match[2].length === 11 ? match[2] : null;
-}
+
 
 
 type CheckIn = {
@@ -31,7 +27,25 @@ function Map() {
         zoom: 1,
     });
 
-    const videoUrl = 'https://www.youtube.com/watch?v=o3YadwGH0ZA&t=1483s';
+    const YTLinks =[
+        'https://www.youtube.com/watch?v=_vktceH8ZA0',
+        'https://www.youtube.com/watch?v=o3YadwGH0ZA',
+        'https://www.youtube.com/watch?v=uPhsq1msjl8',
+        'https://www.youtube.com/watch?v=m2CdUHRcqo8',
+        'https://www.youtube.com/watch?v=OxNU5-iZnm4'
+    
+    ]
+    function getYouTubeVideoID(url: string): string | null {
+        const regex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
+        const match = url.match(regex);
+        return match && match[2].length === 11 ? match[2] : null;
+    }
+
+
+
+    const [play, setPlay] = useState(false);
+
+    const [videoUrl, setVideoUrl] = useState(YTLinks[0]);
     const videoId = getYouTubeVideoID(videoUrl);
     const playerRef = useRef<any>(null);
 
@@ -51,30 +65,23 @@ function Map() {
         playerRef.current = event.target;
     };
 
-    const [play, setPlay] = useState(false);
+    
 
     const handleTogglePlay = () => {
+        const randomLink = YTLinks[Math.floor(Math.random() * YTLinks.length)];
+        setVideoUrl(randomLink);
+    
         if (playerRef.current) {
-            if (play) {
-                console.log('Pausing video');
-                playerRef.current.pauseVideo();
-            } else {
-                console.log('Playing video');
-                playerRef.current.playVideo();
-            }
-            setPlay(!play);
+          if (play) {
+            console.log('Pausing video');
+            playerRef.current.pauseVideo();
+          } else {
+            console.log('Playing video');
+            playerRef.current.playVideo();
+          }
+          setPlay(!play);
         }
-    };
-
-    if (!videoId) {
-        return null;
-    }
-
-
-
-    //const [fogColor, setFogColor] = React.useState("white");
-
-    const [isPlaying, setIsPlaying] = React.useState(false);
+      };
 
     //initializing location state
     const [location, setLocation] = React.useState<{ latitude: number, longitude: number }>();
@@ -551,7 +558,7 @@ function Map() {
             </div >
             <div>
                 <YouTube
-                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 filter blur-sm saturate-150 brightness-50 hue-rotate-30"
+                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 "
                     videoId={videoId}
                     opts={opts}
                     onReady={onReady}

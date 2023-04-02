@@ -54,13 +54,12 @@ const YouTubeAudio: React.FC= () => {
   
   return (
     <div className=''>
-      <YouTube className='absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 filter blur-xl saturate-150 brightness-20 ' videoId={videoId} opts={opts} onReady={onReady} />
-      <button className=" absolute top-2 left-1/2 transform -translate-x-1/2  text-white opacity-25" onClick={handleTogglePlay}>
-        {play? <PauseIcon className="h-8" /> : <PlayIcon className="h-8" />}
-  </button>
+      
+      
     </div>
   );
   
 }
+
 
 export default YouTubeAudio;

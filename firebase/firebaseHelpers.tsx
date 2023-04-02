@@ -1,21 +1,30 @@
 import { db } from './firebaseConfig';
 import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where } from "firebase/firestore";
+import { GeoJSON, Feature, Geometry, Point } from "geojson";
+
+interface CustomGeoJSONFeature extends Feature {
+  properties: {
+    Name: string;
+    Category: string;
+  };
+  geometry: Geometry;
+}
 
 
-function prepareCheckInData(id: string, data: { name: any; category: any; longitude: any; latitude: any; }) {
-    return {
-      type: "Feature",
-      properties: {
-        Name: data.name,
-        Category: data.category,
-      },
-      geometry: {
-        coordinates: [data.longitude, data.latitude],
-        type: "Point",
-      },
-      id: id,
-    };
-  }
+function prepareCheckInData(id: string, data: { name: string; category: string; longitude: number; latitude: number; }): CustomGeoJSONFeature {
+  return {
+    type: "Feature",
+    properties: {
+      Name: data.name,
+      Category: data.category,
+    },
+    geometry: {
+      coordinates: [data.longitude, data.latitude],
+      type: "Point",
+    } as Point,
+    id: id,
+  };
+}
   
   export const saveCheckInToFirestore = async (
     data: { latitude: number; longitude: number; name: string; category: string, uid: string }
@@ -34,36 +43,36 @@ function prepareCheckInData(id: string, data: { name: any; category: any; longit
     }
   }
 
-  export async function fetchCheckInsFromFirestore(uid: string) 
- {
+  export async function fetchCheckInsFromFirestore(uid: string) {
     try {
-        const checkInCollection = collection(db, "checkIns");
-        const q = query(checkInCollection, where("uid", "==", uid));
-        const querySnapshot = await getDocs(q);
-        const checkIns: { type: string; properties: { Name: any; Category: any; }; geometry: { coordinates: any[]; type: string; }; id: string; }[] = [];
-
-        querySnapshot.forEach((doc) => {
-            const data = doc.data() as { name: any; category: any; longitude: any; latitude: any; };
-            const preparedData = {
-                type: 'Feature',
-                properties: {
-                    Name: data.name,
-                    Category: data.category,
-                },
-                geometry: {
-                    coordinates: [data.longitude, data.latitude],
-                    type: 'Point',
-                },
-                id: doc.id,
-            };
-            checkIns.push(preparedData);
-        });
-
-        return checkIns;
+      const checkInCollection = collection(db, "checkIns");
+      const q = query(checkInCollection, where("uid", "==", uid));
+      const querySnapshot = await getDocs(q);
+      const checkIns: CustomGeoJSONFeature[] = [];
+  
+      querySnapshot.forEach((doc) => {
+        const data = doc.data() as { name: string; category: string; longitude: number; latitude: number; };
+        const preparedData: CustomGeoJSONFeature = {
+          type: 'Feature',
+          properties: {
+            Name: data.name,
+            Category: data.category,
+          },
+          geometry: {
+            coordinates: [data.longitude, data.latitude],
+            type: 'Point',
+          },
+          id: doc.id,
+        };
+        checkIns.push(preparedData);
+      });
+  
+      return checkIns;
     } catch (e) {
-        console.error("Error fetching check-ins: ", e);
+      console.error("Error fetching check-ins: ", e);
     }
-}
+  }
+  
 
 
 export const updateCheckInInFirestore = async (id: string, updatedData: { latitude: number; longitude: number; name: string; category: string }, uid: string) => {

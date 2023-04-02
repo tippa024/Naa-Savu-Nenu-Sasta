@@ -81,6 +81,11 @@ function TippaMap() {
 
     const [play, setPlay] = useState(false);
 
+    const onVideoEnd = () => {
+        setPlay(false);
+      };
+      
+
     const [videoUrl, setVideoUrl] = useState(YTLinks[0]);
     const videoId = getYouTubeVideoID(videoUrl);
     console.log(videoId);
@@ -100,10 +105,21 @@ function TippaMap() {
 
     const [playerReady, setPlayerReady] = useState(false);
 
+    const setDesiredQuality = () => {
+        const availableQualityLevels = playerRef.current.getAvailableQualityLevels();
+        if (availableQualityLevels.includes("hd2160")) {
+          playerRef.current.setPlaybackQuality("hd2160");
+        } else if (availableQualityLevels.includes("hd1080")) {
+          playerRef.current.setPlaybackQuality("hd1080");
+        }
+      };
+      
+
 
     const onReady = (event: { target: any }) => {
         playerRef.current = event.target;
         setPlayerReady(true);
+        setDesiredQuality();
     };
 
 
@@ -467,7 +483,7 @@ function TippaMap() {
 
                     </Mapbox>
                 </div >
-                <div className="absolute z-10 bottom-2 left-0 w-full">
+                <div className="absolute z-10 bottom-10 left-0 w-full sm:bottom-2">
                     {   //checkin button
                         checkedIn === false &&
                         (<button
@@ -641,10 +657,11 @@ function TippaMap() {
             <div>
                 { 
                     <YouTube
-                        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0 "
+                        className="absolute top-1/2 left-1/2 transform scale-125 -translate-x-1/2 -translate-y-1/2 z-0 "
                         videoId={videoId!}
                         opts={opts}
                         onReady={onReady}
+                        onEnd={onVideoEnd}
                     />
                 }
                 {clientRender && (

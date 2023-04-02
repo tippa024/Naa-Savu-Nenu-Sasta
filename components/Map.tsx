@@ -4,21 +4,13 @@ import "mapbox-gl/dist/mapbox-gl.css";
 import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFirestore, deleteCheckInFromFirestore } from '@/firebase/firebaseHelpers';
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
-import firebase from 'firebase/app';
+import { User } from 'firebase/auth';
 import { PlayIcon, PauseIcon } from "@heroicons/react/24/outline";
 import YouTube, { YouTubeProps } from 'react-youtube';
+import { GeoJSON, Feature, Geometry, Point } from "geojson";
 
 
 
-
-type CheckIn = {
-    id: string;
-    latitude: any[];
-    longitude: any[];
-    name: string;
-    category: string;
-    // ...
-};
 
 function Map() {
     const [viewState, setViewState] = React.useState({
@@ -27,7 +19,7 @@ function Map() {
         zoom: 1,
     });
 
-    const YTLinks =[
+    const YTLinks = [
         'https://www.youtube.com/watch?v=_vktceH8ZA0',
         'https://www.youtube.com/watch?v=o3YadwGH0ZA',
         'https://www.youtube.com/watch?v=uPhsq1msjl8',
@@ -40,11 +32,8 @@ function Map() {
         'https://www.youtube.com/watch?v=op4B9sNGi0k',
         'https://www.youtube.com/watch?v=2dYFJdQf7rs',
         'https://www.youtube.com/watch?v=CJ9jUb28ZdY',
-
-
-
-    
     ]
+
     function getYouTubeVideoID(url: string): string | null {
         const regex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
         const match = url.match(regex);
@@ -76,23 +65,23 @@ function Map() {
         playerRef.current = event.target;
     };
 
-    
+
 
     const handleTogglePlay = () => {
         const randomLink = YTLinks[Math.floor(Math.random() * YTLinks.length)];
         setVideoUrl('https://www.youtube.com/watch?v=DnrpKMXS1fY');
-    
+
         if (playerRef.current) {
-          if (play) {
-            console.log('Pausing video');
-            playerRef.current.pauseVideo();
-          } else {
-            console.log('Playing video');
-            playerRef.current.playVideo();
-          }
-          setPlay(!play);
+            if (play) {
+                console.log('Pausing video');
+                playerRef.current.pauseVideo();
+            } else {
+                console.log('Playing video');
+                playerRef.current.playVideo();
+            }
+            setPlay(!play);
         }
-      };
+    };
 
     //initializing location state
     const [location, setLocation] = React.useState<{ latitude: number, longitude: number }>();
@@ -107,10 +96,31 @@ function Map() {
     const [category, setCategory] = React.useState('null');
 
     //declare a variable to store the user
-    const [user, setUser] = useState<firebase.User | null>(null);
+    const [user, setUser] = useState<User | null>(null);
 
+    interface CustomGeoJSONFeature extends Feature {
+        properties: {
+          Name: string;
+          Category: string;
+        };
+        geometry: Geometry;
+      }
+
+      const [geoJSONData, setGeoJSONData] = React.useState<GeoJSON & { features: CustomGeoJSONFeature[] }>({
+        type: "FeatureCollection",
+        features: [],
+      });
+
+      function isPoint(geometry: Geometry): geometry is Point {
+        return geometry.type === 'Point';
+      }
+      
+      
+
+    
+    
     //declare a variable to store the geoJSON data
-    const [geoJSONData, setGeoJSONData] = React.useState<{
+    /*const [geoJSONData, setGeoJSONData] = React.useState<{
         type: string;
         features: Array<{
             type: string;
@@ -121,7 +131,7 @@ function Map() {
     }>({
         type: "FeatureCollection",
         features: [],
-    });
+    });*/
 
 
     //declare a variable to check the number of check ins
@@ -131,7 +141,7 @@ function Map() {
     const [showDetails, setShowDetails] = useState(false);
 
     //declare a variable to see if the user is editing a check in
-    const [editingCheckIn, setEditingCheckIn] = useState(null);
+    const [editingCheckIn, setEditingCheckIn] = useState<CheckIn | null>(null);
 
     //declare a variable to see if the user is deleting a check in
     const [deleteCheckIn, setDeleteCheckIn] = useState<CheckIn | null>(null);
@@ -167,7 +177,7 @@ function Map() {
         }
     }, [checkedIn]);
 
-
+    //getting check ins from firestore
     React.useEffect(() => {
         if (user) {
             const loadCheckIns = async () => {
@@ -247,16 +257,27 @@ function Map() {
         }
     };
 
+    // Create an interface for CheckIn
+    interface CheckIn {
+        name: string;
+        category: string;
+        id: string;
+        latitude: number;
+        longitude: number;
+    }
+
     //function to handle edit
-    const handleEdit = (checkIn) => {
+    const handleEdit = (checkIn: CheckIn) => {
         if (editingCheckIn && editingCheckIn.id === checkIn.id) {
             // Save the changes to Firebase
+            if (user) {
             updateCheckInInFirestore(checkIn.id, {
                 latitude: checkIn.latitude,
                 longitude: checkIn.longitude,
                 name: checkIn.name,
                 category: checkIn.category,
             }, user.uid);
+        }
 
             // Reset the editing state
             setEditingCheckIn(null);
@@ -267,7 +288,7 @@ function Map() {
     };
 
     //function to handle delete
-    const handleDelete = (checkIn) => {
+    const handleDelete = (checkIn : CheckIn) => {
         if (deleteCheckIn && deleteCheckIn.id === checkIn.id) {
             // Delete the check in from Firebase
             deleteCheckInFromFirestore(checkIn.id);
@@ -295,19 +316,10 @@ function Map() {
                         fog={{
                             "horizon-blend": 0.01,
                             "color": 'white',
-                            "space-color": ( play? "transparent" : "black"),
+                           'space-color': (play ? "transparent" : "black"),
                             "star-intensity": 0.1,
                         }}
                     >
-                        {/*<AudioAnalyzer onFrequencyChange={setFogColor} isPlaying={isPlaying} />
-
-
-                    <button
-                        onClick={() => setIsPlaying((prevIsPlaying) => !prevIsPlaying)}
-                        className="absolute bottom-1/3 right-0 p-2 m-4 bg-white rounded shadow"
-                    >
-                        {isPlaying ? "Pause" : "Play"}
-                    </button>*/}
                         <div>
                             <GeolocateControl
                                 trackUserLocation={true}
@@ -492,13 +504,27 @@ function Map() {
                     (
                         <div className="flex flex-col absolute top-10 left-10 z-20 bg-white p-2 rounded-lg shadow hover:p-4 transitio duration-200">
                             {geoJSONData.features.map((feature, index) => {
-                                const checkIn = {
-                                    name: feature.properties.Name,
-                                    category: feature.properties.Category,
-                                    id: feature.id,
-                                    latitude: feature.geometry.coordinates[1],
-                                    longitude: feature.geometry.coordinates[0],
-                                };
+                                let checkIn: {
+                                    name: string;
+                                    category: string;
+                                    id: any;
+                                    latitude: number;
+                                    longitude: number;
+                                  } | null = null;
+                                
+
+                                if (isPoint(feature.geometry)) {
+                                    checkIn = {
+                                      name: feature.properties.Name,
+                                      category: feature.properties.Category,
+                                      id: feature.id,
+                                      latitude: feature.geometry.coordinates[1],
+                                      longitude: feature.geometry.coordinates[0],
+                                    };
+                                  } else {
+                                    return null; // Return null if geometry is not of type Point
+                                  }
+                            
 
                                 return (
                                     <div key={index} className="flex p-2 mb-2 border-gray-200 border-b-2 rounded shadow-sm hover:shadow-xl hover:scale-105 transform transition duration-100">
@@ -507,12 +533,12 @@ function Map() {
                                                 <input
                                                     type="text"
                                                     placeholder={checkIn.name}
-                                                    onChange={(e) => checkIn.name = e.target.value}
+                                                    onChange={(e) => checkIn!.name = e.target.value}
                                                     className="flex-auto mb-2"
                                                 />
                                                 <select
                                                     placeholder={checkIn.category}
-                                                    onChange={(e) => checkIn.category = e.target.value}
+                                                    onChange={(e) => checkIn!.category = e.target.value}
                                                     className="flex-auto mb-2"
                                                 >
                                                     <option value="">Select Category</option>
@@ -539,12 +565,12 @@ function Map() {
                                         <div className="flex-auto flex flex-col px-2">
                                             <button
                                                 className="px-2 py-1 mb-1 border-gray-100 border-2 hover:bg-gray-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
-                                                onClick={() => handleEdit(checkIn)}
+                                                onClick={() => handleEdit(checkIn!)}
                                             >
                                                 {editingCheckIn && editingCheckIn.id === checkIn.id ? "Save" : "Edit"}
                                             </button>
                                             <button className="px-2 py-1 mt-1 border-red-300 border-2 hover:bg-red-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
-                                                onClick={() => handleDelete(checkIn)}
+                                                onClick={() => handleDelete(checkIn!)}
                                             >
                                                 {deleteCheckIn && deleteCheckIn.id === checkIn.id ? "Confrim D" : "Delete"}
                                             </button>
@@ -564,6 +590,8 @@ function Map() {
                                 </button>
                             )}
 
+                            
+
                         </div>
                     )
                 }
@@ -571,12 +599,12 @@ function Map() {
             </div >
             <div>
                 {
-                <YouTube
-                    className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 "
-                    videoId={videoId!}
-                    opts={opts}
-                    onReady={onReady}
-                />
+                    <YouTube
+                        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 "
+                        videoId={videoId!}
+                        opts={opts}
+                        onReady={onReady}
+                    />
                 }
                 <button
                     className="absolute top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-20"
@@ -585,14 +613,14 @@ function Map() {
                     {play ? <PauseIcon className="h-8" /> : <PlayIcon className="h-8" />}
                 </button>
 
-                
+
             </div>
 
         </div >
 
-            );
-    
+    );
+
 }
 
 
-            export default Map;
+export default Map;

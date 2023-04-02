@@ -464,7 +464,7 @@ function TippaMap() {
 
                     </Mapbox>
                 </div >
-                <div className="absolute z-10 bottom-10 left-0 w-full sm:bottom-2">
+                <div className="absolute z-10 bottom-28 left-0 w-full sm:bottom-2">
                     {   //checkin button
                         checkedIn === false &&
                         (<button
@@ -638,7 +638,7 @@ function TippaMap() {
             <div>
                 { 
                     <YouTube
-                        className="absolute top-1/2 left-1/2 transform scale-125 -translate-x-1/2 -translate-y-1/2 z-0 "
+                        className="absolute top-1/2 left-1/2 transform scale-125 -translate-x-1/2 -translate-y-1/2 z-0 filter blur-md sm:blur-none"
                         videoId={videoId!}
                         opts={opts}
                         onReady={onReady}

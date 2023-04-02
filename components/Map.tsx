@@ -2,7 +2,7 @@ import React, { useState, useRef } from "react";
 import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source, MapLayerMouseEvent } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFirestore, deleteCheckInFromFirestore } from '@/firebase/firebaseHelpers';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithRedirect } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import { User } from 'firebase/auth';
 import { PlayIcon, PauseIcon } from "@heroicons/react/24/outline";
@@ -178,25 +178,6 @@ function TippaMap() {
         return geometry.type === 'Point';
     }
 
-
-
-
-
-    //declare a variable to store the geoJSON data
-    /*const [geoJSONData, setGeoJSONData] = React.useState<{
-        type: string;
-        features: Array<{
-            type: string;
-            properties: { Name: string; Category: string };
-            geometry: { coordinates: any; type: string };
-            id: string;
-        }>;
-    }>({
-        type: "FeatureCollection",
-        features: [],
-    });*/
-
-
     //declare a variable to check the number of check ins
     const [checkInCount, setCheckInCount] = React.useState(0);
 
@@ -276,7 +257,7 @@ function TippaMap() {
     const handleGoogleSignIn = async () => {
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
+            await signInWithRedirect(auth, provider);
         } catch (error) {
             console.error('Error signing in:', error);
         }

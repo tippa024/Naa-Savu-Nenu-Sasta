@@ -20,17 +20,30 @@ function TippaMap() {
         zoom: 1,
     });
 
-    //bg of map
-    const [backgroundColor, setBackgroundColor] = useState('#000000');
 
 
-    const getRandomColor = () => {
-        const randomValue = () => Math.floor(Math.random() * 64);
-        const color1 = `rgba(${randomValue()}, ${randomValue()}, ${randomValue()}, 1)`;
-        const color2 = `rgba(${randomValue()}, ${randomValue()}, ${randomValue()}, 1)`;
-        return `linear-gradient(135deg, ${color1}, ${color2})`;
+
+    const randomColor = () => {
+        const colors = ["#ffffff", "#ffe9c4", "#d4fbff", "#ffd4d4", "red", "blue", "green", "yellow", "purple", "orange", "pink", "brown", "grey", "black", "white"];
+        return colors[Math.floor(Math.random() * colors.length)];
       };
       
+      const createStars = (count: number) => {
+        const stars = [];
+        for (let i = 0; i < count; i++) {
+          stars.push({
+            x: Math.random() * 100,
+            y: Math.random() * 100,
+            color: randomColor(),
+          });
+        }
+        return stars;
+      };
+      
+    const [stars, setStars] = useState(createStars(100));
+
+
+
 
 
 
@@ -86,7 +99,6 @@ function TippaMap() {
     const handleTogglePlay = () => {
         const randomLink = YTLinks[Math.floor(Math.random() * YTLinks.length)];
         setVideoUrl('https://www.youtube.com/watch?v=DnrpKMXS1fY');
-        setBackgroundColor(getRandomColor());
 
         if (playerRef.current) {
             if (play) {
@@ -618,10 +630,21 @@ function TippaMap() {
                     />
                 }
                 <div
-                    className="fixed top-0 left-0 w-screen h-screen z-10"
-                    style={{ backgroundImage: backgroundColor }}
+                    className="fixed top-0 left-0 w-screen h-screen z-10 bg-black"
                     hidden={play}
-                ></div>
+                >
+                    {stars.map((star, index) => (
+                        <div
+                            key={index}
+                            className="star"
+                            style={{
+                                top: `${star.y}%`,
+                                left: `${star.x}%`,
+                                backgroundColor: star.color,
+                            }}
+                        ></div>
+                    ))}
+                </div>
                 <button
                     className="absolute top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-40"
                     onClick={handleTogglePlay}

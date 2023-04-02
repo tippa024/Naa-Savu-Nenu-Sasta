@@ -12,12 +12,28 @@ import { GeoJSON, Feature, Geometry, Point } from "geojson";
 
 
 
-function Map() {
+
+function TippaMap() {
     const [viewState, setViewState] = React.useState({
         longitude: 78.4835,
         latitude: 17.408,
         zoom: 1,
     });
+
+    //bg of map
+    const [backgroundColor, setBackgroundColor] = useState('#000000');
+
+
+    const getRandomColor = () => {
+        const randomValue = () => Math.floor(Math.random() * 64);
+        const color1 = `rgba(${randomValue()}, ${randomValue()}, ${randomValue()}, 1)`;
+        const color2 = `rgba(${randomValue()}, ${randomValue()}, ${randomValue()}, 1)`;
+        return `linear-gradient(135deg, ${color1}, ${color2})`;
+      };
+      
+
+
+
 
     const YTLinks = [
         'https://www.youtube.com/watch?v=_vktceH8ZA0',
@@ -70,6 +86,7 @@ function Map() {
     const handleTogglePlay = () => {
         const randomLink = YTLinks[Math.floor(Math.random() * YTLinks.length)];
         setVideoUrl('https://www.youtube.com/watch?v=DnrpKMXS1fY');
+        setBackgroundColor(getRandomColor());
 
         if (playerRef.current) {
             if (play) {
@@ -100,25 +117,25 @@ function Map() {
 
     interface CustomGeoJSONFeature extends Feature {
         properties: {
-          Name: string;
-          Category: string;
+            Name: string;
+            Category: string;
         };
         geometry: Geometry;
-      }
+    }
 
-      const [geoJSONData, setGeoJSONData] = React.useState<GeoJSON & { features: CustomGeoJSONFeature[] }>({
+    const [geoJSONData, setGeoJSONData] = React.useState<GeoJSON & { features: CustomGeoJSONFeature[] }>({
         type: "FeatureCollection",
         features: [],
-      });
+    });
 
-      function isPoint(geometry: Geometry): geometry is Point {
+    function isPoint(geometry: Geometry): geometry is Point {
         return geometry.type === 'Point';
-      }
-      
-      
+    }
 
-    
-    
+
+
+
+
     //declare a variable to store the geoJSON data
     /*const [geoJSONData, setGeoJSONData] = React.useState<{
         type: string;
@@ -271,13 +288,13 @@ function Map() {
         if (editingCheckIn && editingCheckIn.id === checkIn.id) {
             // Save the changes to Firebase
             if (user) {
-            updateCheckInInFirestore(checkIn.id, {
-                latitude: checkIn.latitude,
-                longitude: checkIn.longitude,
-                name: checkIn.name,
-                category: checkIn.category,
-            }, user.uid);
-        }
+                updateCheckInInFirestore(checkIn.id, {
+                    latitude: checkIn.latitude,
+                    longitude: checkIn.longitude,
+                    name: checkIn.name,
+                    category: checkIn.category,
+                }, user.uid);
+            }
 
             // Reset the editing state
             setEditingCheckIn(null);
@@ -288,7 +305,7 @@ function Map() {
     };
 
     //function to handle delete
-    const handleDelete = (checkIn : CheckIn) => {
+    const handleDelete = (checkIn: CheckIn) => {
         if (deleteCheckIn && deleteCheckIn.id === checkIn.id) {
             // Delete the check in from Firebase
             deleteCheckInFromFirestore(checkIn.id);
@@ -313,15 +330,6 @@ function Map() {
                         mapStyle="mapbox://styles/tippa24/cletvw35m00jp01ms936eiw8v"
                         projection="globe"
                         mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
-                        fog={{
-                            'range': [0, 1],
-                            'horizon-blend': 0.05,
-                            color: 'gray',
-                            'high-color': '#add8e6',
-                            "space-color": (play ? "transparent" : "black"),
-                            'star-intensity': 0.1
-                            
-                        }}
                     >
                         <div>
                             <GeolocateControl
@@ -513,21 +521,21 @@ function Map() {
                                     id: any;
                                     latitude: number;
                                     longitude: number;
-                                  } | null = null;
-                                
+                                } | null = null;
+
 
                                 if (isPoint(feature.geometry)) {
                                     checkIn = {
-                                      name: feature.properties.Name,
-                                      category: feature.properties.Category,
-                                      id: feature.id,
-                                      latitude: feature.geometry.coordinates[1],
-                                      longitude: feature.geometry.coordinates[0],
+                                        name: feature.properties.Name,
+                                        category: feature.properties.Category,
+                                        id: feature.id,
+                                        latitude: feature.geometry.coordinates[1],
+                                        longitude: feature.geometry.coordinates[0],
                                     };
-                                  } else {
+                                } else {
                                     return null; // Return null if geometry is not of type Point
-                                  }
-                            
+                                }
+
 
                                 return (
                                     <div key={index} className="flex p-2 mb-2 border-gray-200 border-b-2 rounded shadow-sm hover:shadow-xl hover:scale-105 transform transition duration-100">
@@ -593,7 +601,7 @@ function Map() {
                                 </button>
                             )}
 
-                            
+
 
                         </div>
                     )
@@ -603,14 +611,19 @@ function Map() {
             <div>
                 {
                     <YouTube
-                        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 "
+                        className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0 "
                         videoId={videoId!}
                         opts={opts}
                         onReady={onReady}
                     />
                 }
+                <div
+                    className="fixed top-0 left-0 w-screen h-screen z-10"
+                    style={{ backgroundImage: backgroundColor }}
+                    hidden={play}
+                ></div>
                 <button
-                    className="absolute top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-20"
+                    className="absolute top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-40"
                     onClick={handleTogglePlay}
                 >
                     {play ? <PauseIcon className="h-8" /> : <PlayIcon className="h-8" />}
@@ -626,4 +639,4 @@ function Map() {
 }
 
 
-export default Map;
+export default TippaMap;

@@ -32,7 +32,17 @@ function Map() {
         'https://www.youtube.com/watch?v=o3YadwGH0ZA',
         'https://www.youtube.com/watch?v=uPhsq1msjl8',
         'https://www.youtube.com/watch?v=m2CdUHRcqo8',
-        'https://www.youtube.com/watch?v=OxNU5-iZnm4'
+        'https://www.youtube.com/watch?v=OxNU5-iZnm4',
+        "https://www.youtube.com/watch?v=DnrpKMXS1fY",
+        'https://www.youtube.com/watch?v=FDuYgTLnxhM',
+        'https://www.youtube.com/watch?v=1VcFFvqQV8g',
+        'https://www.youtube.com/watch?v=Zv_axdInw_o',
+        'https://www.youtube.com/watch?v=op4B9sNGi0k',
+        'https://www.youtube.com/watch?v=2dYFJdQf7rs',
+        'https://www.youtube.com/watch?v=CJ9jUb28ZdY',
+
+
+
     
     ]
     function getYouTubeVideoID(url: string): string | null {
@@ -47,6 +57,7 @@ function Map() {
 
     const [videoUrl, setVideoUrl] = useState(YTLinks[0]);
     const videoId = getYouTubeVideoID(videoUrl);
+    console.log(videoId);
     const playerRef = useRef<any>(null);
 
     const opts = {
@@ -69,7 +80,7 @@ function Map() {
 
     const handleTogglePlay = () => {
         const randomLink = YTLinks[Math.floor(Math.random() * YTLinks.length)];
-        setVideoUrl(randomLink);
+        setVideoUrl('https://www.youtube.com/watch?v=DnrpKMXS1fY');
     
         if (playerRef.current) {
           if (play) {
@@ -172,7 +183,7 @@ function Map() {
 
             loadCheckIns();
         }
-    }, [checkedIn, user, editingCheckIn === false, deleteCheckIn]);
+    }, [checkedIn, user, editingCheckIn, deleteCheckIn]);
 
     //auth
     React.useEffect(() => {
@@ -485,6 +496,8 @@ function Map() {
                                     name: feature.properties.Name,
                                     category: feature.properties.Category,
                                     id: feature.id,
+                                    latitude: feature.geometry.coordinates[1],
+                                    longitude: feature.geometry.coordinates[0],
                                 };
 
                                 return (
@@ -557,18 +570,22 @@ function Map() {
 
             </div >
             <div>
+                {
                 <YouTube
                     className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 "
-                    videoId={videoId}
+                    videoId={videoId!}
                     opts={opts}
                     onReady={onReady}
                 />
+                }
                 <button
                     className="absolute top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-20"
                     onClick={handleTogglePlay}
                 >
                     {play ? <PauseIcon className="h-8" /> : <PlayIcon className="h-8" />}
                 </button>
+
+                
             </div>
 
         </div >

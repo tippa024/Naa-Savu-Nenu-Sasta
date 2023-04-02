@@ -314,10 +314,13 @@ function Map() {
                         projection="globe"
                         mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
                         fog={{
-                            "horizon-blend": 0.01,
-                            "color": 'white',
-                           'space-color': (play ? "transparent" : "black"),
-                            "star-intensity": 0.1,
+                            'range': [0, 1],
+                            'horizon-blend': 0.05,
+                            color: 'gray',
+                            'high-color': '#add8e6',
+                            "space-color": (play ? "transparent" : "black"),
+                            'star-intensity': 0.1
+                            
                         }}
                     >
                         <div>

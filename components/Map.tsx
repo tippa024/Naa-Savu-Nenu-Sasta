@@ -20,26 +20,34 @@ function TippaMap() {
         zoom: 1,
     });
 
+    const [clientRender, setClientRender] = useState(false);
+
+    React.useEffect(() => {
+        setClientRender(true);
+    }, []);
+
+
+
 
 
 
     const randomColor = () => {
-        const colors = ["#ffffff", "#ffe9c4", "#d4fbff", "#ffd4d4", "red", "blue", "green", "yellow", "purple", "orange", "pink", "brown", "grey", "black", "white"];
+        const colors = ["#ffffff", "#ffe9c4", "#d4fbff", "#ffd4d4", "#e6e6e6", '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#c0c0c0', '#808080', '#800000', '#808000', '#008000', '#800080', '#008080', '#000080', '#ffffff', '#000000'];
         return colors[Math.floor(Math.random() * colors.length)];
-      };
-      
-      const createStars = (count: number) => {
+    };
+
+    const createStars = (count: number) => {
         const stars = [];
         for (let i = 0; i < count; i++) {
-          stars.push({
-            x: Math.random() * 100,
-            y: Math.random() * 100,
-            color: randomColor(),
-          });
+            stars.push({
+                x: Math.random() * 100,
+                y: Math.random() * 100,
+                color: randomColor(),
+            });
         }
         return stars;
-      };
-      
+    };
+
     const [stars, setStars] = useState(createStars(100));
 
 
@@ -82,7 +90,7 @@ function TippaMap() {
         height: '1080', // Set height to screen height
         width: '1920', // Set width to '0' to only play audio
         playerVars: {
-            autoplay: 0, // Do not auto-play the video
+            autoplay: 1, // Do not auto-play the video
             controls: 0, // Hide controls
             modestbranding: 1, // Hide YouTube logo
             rel: 0, // Disable related videos
@@ -90,15 +98,25 @@ function TippaMap() {
         },
     };
 
+    const [playerReady, setPlayerReady] = useState(false);
+
+
     const onReady = (event: { target: any }) => {
         playerRef.current = event.target;
+        setPlayerReady(true);
     };
 
 
 
     const handleTogglePlay = () => {
+        if (!playerReady) return;
+
+        if(!play){
+
         const randomLink = YTLinks[Math.floor(Math.random() * YTLinks.length)];
-        setVideoUrl('https://www.youtube.com/watch?v=DnrpKMXS1fY');
+        setVideoUrl(randomLink);
+
+        }
 
         if (playerRef.current) {
             if (play) {
@@ -621,7 +639,7 @@ function TippaMap() {
 
             </div >
             <div>
-                {
+                { 
                     <YouTube
                         className="absolute top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 z-0 "
                         videoId={videoId!}
@@ -629,22 +647,24 @@ function TippaMap() {
                         onReady={onReady}
                     />
                 }
-                <div
-                    className="fixed top-0 left-0 w-screen h-screen z-10 bg-black"
-                    hidden={play}
-                >
-                    {stars.map((star, index) => (
-                        <div
-                            key={index}
-                            className="star"
-                            style={{
-                                top: `${star.y}%`,
-                                left: `${star.x}%`,
-                                backgroundColor: star.color,
-                            }}
-                        ></div>
-                    ))}
-                </div>
+                {clientRender && (
+                    <div
+                        className="fixed top-0 left-0 w-screen h-screen z-10 bg-black"
+                        hidden={play}
+                    >
+                        {stars.map((star, index) => (
+                            <div
+                                key={index}
+                                className="star"
+                                style={{
+                                    top: `${star.y}%`,
+                                    left: `${star.x}%`,
+                                    backgroundColor: star.color,
+                                }}
+                            ></div>
+                        ))}
+                    </div>
+                )}
                 <button
                     className="absolute top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-40"
                     onClick={handleTogglePlay}

@@ -5,12 +5,10 @@ import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFire
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithRedirect } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import { User } from 'firebase/auth';
+import dynamic from 'next/dynamic';
 import { PlayIcon, PauseIcon } from "@heroicons/react/24/outline";
 import YouTube, { YouTubeProps } from 'react-youtube';
 import { GeoJSON, Feature, Geometry, Point } from "geojson";
-
-
-
 
 
 function TippaMap() {
@@ -238,7 +236,7 @@ function TippaMap() {
             loadCheckIns();
         }
     }, [checkedIn, user, editingCheckIn, deleteCheckIn]);
-
+    
     //auth
     React.useEffect(() => {
         const auth = getAuth();
@@ -257,11 +255,11 @@ function TippaMap() {
     const handleGoogleSignIn = async () => {
         try {
             const provider = new GoogleAuthProvider();
-            await signInWithRedirect(auth, provider);
+            await signInWithPopup(auth, provider);
         } catch (error) {
             console.error('Error signing in:', error);
         }
-    };
+    }; 
 
     //function to handle check in
     const handleCheckIn = () => {

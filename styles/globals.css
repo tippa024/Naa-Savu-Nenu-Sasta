@@ -8,18 +8,32 @@
     width: 2px;
     height: 2px;
     border-radius: 50%;
-    animation: twinkle 2s infinite ease-in-out;
-  }
   
-  @keyframes twinkle {
+    animation: twinkle var(--duration) infinite ease-in-out, move var(--duration) infinite linear;
+  }
+
+  
+  
+  @keyframes move {
     0% {
+      transform: translate(0px, 0px);
+    }
+    100% {
+      transform: translate(100px, -50px);
+    }
+  }
+
+  @keyframes twinkle {
+    0%, 100% {
       opacity: 0.2;
     }
     50% {
       opacity: 1;
     }
-    100% {
-      opacity: 0.2;
-    }
   }
+
+  
+    /* animation: twinkle var(--duration) infinite ease-in-out , move var(--delay)infinite linear; */
+  
+  
   

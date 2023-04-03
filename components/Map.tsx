@@ -1,14 +1,16 @@
-import React, { useState, useRef } from "react";
+import React, { useState, useRef, ChangeEvent } from "react";
 import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source, MapLayerMouseEvent } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFirestore, deleteCheckInFromFirestore } from '@/firebase/firebaseHelpers';
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithRedirect } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import { User } from 'firebase/auth';
-import dynamic from 'next/dynamic';
 import { PlayIcon, PauseIcon } from "@heroicons/react/24/outline";
 import YouTube, { YouTubeProps } from 'react-youtube';
 import { GeoJSON, Feature, Geometry, Point } from "geojson";
+import { CSSProperties } from 'react';
+import classNames from "classnames";
+
 
 
 function TippaMap() {
@@ -28,11 +30,23 @@ function TippaMap() {
 
 
 
-
+    //bgstars
     const randomColor = () => {
-        const colors = ["#ffffff", "#ffe9c4", "#d4fbff", "#ffd4d4", "#e6e6e6", '#ff0000', '#00ff00', '#0000ff', '#ffff00', '#00ffff', '#ff00ff', '#c0c0c0', '#808080', '#800000', '#808000', '#008000', '#800080', '#008080', '#000080', '#ffffff', '#000000'];
+        const colors = ["#ffffff", "#ffe9c4", "#d4fbff", "#ffd4d4", "#e6e6e6", "tomato", "green", "purple"];
         return colors[Math.floor(Math.random() * colors.length)];
     };
+
+
+
+    const randomDuration = () => {
+        return (Math.random() * 3 + 5) + "s";
+    };
+
+    const randomDelay = () => {
+        return (Math.random() * 3) + "s";
+    };
+
+
 
     const createStars = (count: number) => {
         const stars = [];
@@ -41,32 +55,33 @@ function TippaMap() {
                 x: Math.random() * 100,
                 y: Math.random() * 100,
                 color: randomColor(),
+                duration: randomDuration(),
+                delay: randomDelay(),
             });
         }
         return stars;
     };
 
-    const [stars, setStars] = useState(createStars(100));
+
+    const [stars, setStars] = useState(createStars(200));
 
 
-
-
-
-
-
+    //bgYT
     const YTLinks = [
-        'https://www.youtube.com/watch?v=_vktceH8ZA0',
-        'https://www.youtube.com/watch?v=o3YadwGH0ZA',
-        'https://www.youtube.com/watch?v=uPhsq1msjl8',
-        'https://www.youtube.com/watch?v=m2CdUHRcqo8',
-        'https://www.youtube.com/watch?v=OxNU5-iZnm4',
-        "https://www.youtube.com/watch?v=DnrpKMXS1fY",
-        'https://www.youtube.com/watch?v=FDuYgTLnxhM',
-        'https://www.youtube.com/watch?v=1VcFFvqQV8g',
-        'https://www.youtube.com/watch?v=Zv_axdInw_o',
-        'https://www.youtube.com/watch?v=op4B9sNGi0k',
-        'https://www.youtube.com/watch?v=2dYFJdQf7rs',
-        'https://www.youtube.com/watch?v=CJ9jUb28ZdY',
+        { url: 'https://www.youtube.com/watch?v=DnrpKMXS1fY', title: 'Alive' },
+        { url: 'https://www.youtube.com/watch?v=_vktceH8ZA0', title: 'Naatu' },
+        { url: 'https://www.youtube.com/watch?v=OxNU5-iZnm4', title: 'Limitless' },
+        { url: 'https://www.youtube.com/watch?v=FDuYgTLnxhM', title: 'Good Morning' },
+        { url: 'https://www.youtube.com/watch?v=Zv_axdInw_o', title: 'Reboot' },
+        { url: 'https://www.youtube.com/watch?v=op4B9sNGi0k', title: 'Magenta Riddim' },
+        { url: 'https://www.youtube.com/watch?v=34Na4j8AVgA', title: 'Starboy' },
+        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar' },
+        { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang' },
+        { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower' },
+        { url: 'https://www.youtube.com/watch?v=7HaJArMDKgI', title: 'New York Drive' },
+
+
+
     ]
 
     function getYouTubeVideoID(url: string): string | null {
@@ -81,10 +96,10 @@ function TippaMap() {
 
     const onVideoEnd = () => {
         setPlay(false);
-      };
-      
+    };
 
-    const [videoUrl, setVideoUrl] = useState(YTLinks[0]);
+    const [videoTitle, setVideoTitle] = useState('Alive');
+    const [videoUrl, setVideoUrl] = useState(YTLinks[0].url);
     const videoId = getYouTubeVideoID(videoUrl);
     console.log(videoId);
     const playerRef = useRef<any>(null);
@@ -105,13 +120,27 @@ function TippaMap() {
 
     const setDesiredQuality = () => {
         const availableQualityLevels = playerRef.current.getAvailableQualityLevels();
+
+        // Force the video quality to be 1080p or above
         if (availableQualityLevels.includes("hd2160")) {
-          playerRef.current.setPlaybackQuality("hd2160");
+            playerRef.current.setPlaybackQuality("hd2160");
         } else if (availableQualityLevels.includes("hd1080")) {
-          playerRef.current.setPlaybackQuality("hd1080");
+            playerRef.current.setPlaybackQuality("hd1080");
+        } else {
+            // If 1080p and 2160p are not available, use the highest available quality
+            playerRef.current.setPlaybackQuality(availableQualityLevels[0]);
         }
-      };
-      
+    };
+
+    const [highRes, setHighRes] = useState(false);
+
+    // New function to handle quality change event
+    const handleQualityChangeEvent = (event: { target: any }) => {
+        const currentQuality = event.target.getPlaybackQuality();
+        if (currentQuality === 'hd2160' || currentQuality === 'hd1080') {
+            setHighRes(true);
+        } 
+    };
 
 
     const onReady = (event: { target: any }) => {
@@ -120,16 +149,21 @@ function TippaMap() {
         setDesiredQuality();
     };
 
-
+    const [firstPlay, setFirstPlay] = useState(true);
 
     const handleTogglePlay = () => {
         if (!playerReady) return;
 
-        if(!play){
-
-        const randomLink = YTLinks[Math.floor(Math.random() * YTLinks.length)];
-        setVideoUrl(randomLink);
-
+        if (!play) {
+            let randomVideo;
+            if (firstPlay) { // If it's the first play, set the video to 'Alive'
+                randomVideo = YTLinks[0];
+                setFirstPlay(false); // Set firstPlay to false after first play
+            } else {
+                randomVideo = YTLinks[Math.floor(Math.random() * YTLinks.length)];
+            }
+            setVideoUrl(randomVideo.url);
+            setVideoTitle(randomVideo.title);
         }
 
         if (playerRef.current) {
@@ -144,8 +178,32 @@ function TippaMap() {
         }
     };
 
+    //handle spacebar and play/pause button
+    React.useEffect(() => {
+        const handleKeydown = (event: globalThis.KeyboardEvent) => {
+            if (event.code === 'Space' || event.code === 'MediaPlayPause') {
+                handleTogglePlay();
+                event.preventDefault();
+            }
+        };
+
+        document.addEventListener('keydown', handleKeydown);
+        return () => {
+            document.removeEventListener('keydown', handleKeydown);
+        };
+    }, [handleTogglePlay]);
+
+
+
+
+
+
+
     //initializing location state
     const [location, setLocation] = React.useState<{ latitude: number, longitude: number }>();
+
+    //initializing a boolean variable to check if location is available
+    const [locationAvailable, setLocationAvailable] = React.useState(true);
 
     //decalre a boolean variable to check if the user has checked in
     const [checkedIn, setCheckedIn] = React.useState(false);
@@ -206,7 +264,7 @@ function TippaMap() {
 
     //getting current location
     React.useEffect(() => {
-        if (navigator.geolocation && checkedIn) {
+        if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
                 position => {
                     const { latitude, longitude } = position.coords;
@@ -214,6 +272,7 @@ function TippaMap() {
                 },
                 error => {
                     console.log(`Error getting location: ${error.message}`);
+                    setLocationAvailable(false);
                 }
             );
         }
@@ -236,7 +295,7 @@ function TippaMap() {
             loadCheckIns();
         }
     }, [checkedIn, user, editingCheckIn, deleteCheckIn]);
-    
+
     //auth
     React.useEffect(() => {
         const auth = getAuth();
@@ -259,14 +318,16 @@ function TippaMap() {
         } catch (error) {
             console.error('Error signing in:', error);
         }
-    }; 
+    };
 
     //function to handle check in
     const handleCheckIn = () => {
-        if (!user) {
-            handleGoogleSignIn();
-        } else {
-            setCheckedIn(true);
+        if (locationAvailable) {
+            if (!user) {
+                handleGoogleSignIn();
+            } else {
+                setCheckedIn(true);
+            }
         }
     };
 
@@ -347,7 +408,7 @@ function TippaMap() {
 
     return (
         <div className="relative w-full h-screen overflow-hidden">
-            <div className="relative h-screen w-full z-20">
+            <div className="relative h-screen w-full z-30">
                 <div className="absolute z-1 h-full w-full">
                     <Mapbox
                         {...viewState}
@@ -462,20 +523,21 @@ function TippaMap() {
 
                     </Mapbox>
                 </div >
-                <div className="absolute z-10 bottom-28 left-0 w-full sm:bottom-2">
+                <div className="absolute z-40 bottom-28 left-0 w-full sm:bottom-2">
                     {   //checkin button
                         checkedIn === false &&
                         (<button
                             className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10  text-gray-500 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
                             onClick={() => handleCheckIn()}
                         >
-                            Check-In
+                            {(locationAvailable) ? "Check In" : "Location Unavailable please try after sometime"}
                         </button>)
                     }
-                    {   //confirm button
+                    {
                         checkedIn && location &&
                         (
                             <button
+                                id="CheckInConfirmButton"
                                 className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
                                 onClick={() => { setCheckedIn(false); saveCheckIn() }}
                             >
@@ -485,21 +547,25 @@ function TippaMap() {
                     {
                         checkedIn &&
 
-                        //input field for marker name
+
                         (
                             <div className="">
-                                <input className="absolute bottom-20 inset-x-0 transform  z-10 rounded-md bg-transparent border-b-2 text-center text-gray-700  placeholder-gray-200 " placeholder="Enter Check-In Name" type="text" onChange={(e) => setMarkerName(e.target.value)} />
+                                <input id="CheckInNameInput"
+                                    className="absolute bottom-20 inset-x-0 transform  z-10 rounded-md bg-transparent border-b-2 text-center text-gray-700  placeholder-gray-500 focus:border-0 "
+                                    placeholder="Enter Check-In Name" type="text" onChange={(e) => setMarkerName(e.target.value)} />
                             </div>
                         )
                     }
                     {
 
-                        //select field for marker category
+
                         checkedIn &&
 
                         (
                             <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
-                                <select className=" bg-gray-50 border border-gray-300 text-gray-900 text-sm rounded-lg focus:ring-white focus:border-white"
+                                <select
+                                    id="CheckInCategoryInput"
+                                    className=" bg-gray-100 border-2 border-white text-black text-sm rounded-lg focus:ring-white focus:border-white required"
                                     value={category}
                                     onChange={(e) => setCategory(e.target.value)}
                                 >
@@ -518,7 +584,7 @@ function TippaMap() {
                 {user &&
 
                     <button
-                        className="absolute top-2 right-2  z-10  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                        className="absolute top-10 sm:top-2 right-2  z-10  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
                         onClick={() => handleLogout()}
                     >
                         Logout
@@ -528,7 +594,7 @@ function TippaMap() {
                 {user && checkInCount > 0 &&
 
                     <button
-                        className="absolute top-2 left-2  z-10  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+                        className="absolute top-10 sm:top-2 left-2  z-40  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
                         onClick={() => setShowDetails(true)}
                     >
                         Edit CheckIn
@@ -538,8 +604,8 @@ function TippaMap() {
                 {
                     showDetails && checkInCount > 0 &&
                     (
-                        <div className="flex flex-col absolute top-10 left-10 z-20 bg-white p-2 rounded-lg shadow hover:p-4 transitio duration-200">
-                            {geoJSONData.features.map((feature, index) => {
+                        <div className="flex flex-col absolute max-h-[80vh] overflow-y-auto top-12 sm:top-4 left-4 z-40 bg-white p-2 rounded-lg shadow hover:p-4 duration-200">
+                            {geoJSONData.features.map((feature, index) => { 
                                 let checkIn: {
                                     name: string;
                                     category: string;
@@ -563,42 +629,48 @@ function TippaMap() {
 
 
                                 return (
-                                    <div key={index} className="flex p-2 mb-2 border-gray-200 border-b-2 rounded shadow-sm hover:shadow-xl hover:scale-105 transform transition duration-100">
+                                    <div key={index} className="flex flex-auto p-2 mb-2 border-gray-200  z-40 rounded shadow-sm hover:shadow-xl hover:scale-105 transform transition duration-100">
                                         {editingCheckIn && editingCheckIn.id === checkIn.id ? (
-                                            <>
-                                                <input
-                                                    type="text"
-                                                    placeholder={checkIn.name}
-                                                    onChange={(e) => checkIn!.name = e.target.value}
-                                                    className="flex-auto mb-2"
-                                                />
-                                                <select
-                                                    placeholder={checkIn.category}
-                                                    onChange={(e) => checkIn!.category = e.target.value}
-                                                    className="flex-auto mb-2"
-                                                >
-                                                    <option value="">Select Category</option>
-                                                    {categoryOptions.map((option) => (
-                                                        <option key={option} value={option}>
-                                                            {option}
-                                                        </option>
-                                                    ))}
-                                                </select>
-                                            </>
+                                            <div className="flex-col flex basis-1/2">
+                                                <>
+                                                    <input
+                                                        type="text"
+                                                        placeholder={checkIn.name}
+                                                        onChange={(e) => checkIn!.name = e.target.value}
+                                                        className="basis-1/2 mb-2 border-gray-200 border-2 rounded"
+                                                    />
+                                                    <select
+                                                        placeholder={checkIn.category}
+                                                        onChange={(e) => checkIn!.category = e.target.value}
+                                                        className="text-gray-500 bais-1/2 text-sm font-light"
+                                                    >
+                                                        <option value="">Select Category</option>
+                                                        {categoryOptions.map((option) => (
+                                                            <option key={option} value={option}>
+                                                                {option}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </>
+                                            </div>
                                         ) : (
+
+
                                             <>
-                                                <div className="flex-auto flex flex-col basis-1/2">
-                                                    <div className="basis-1/4">
+                                                <div className=" flex-col basis-1/2 z-40">
+                                                    <div className="basis-1/2">
                                                         <h3 className="font-semibold">{checkIn.name}</h3>
                                                     </div>
-                                                    <div className="basis-1/4">
+                                                    <div className="basis-1/2">
                                                         <h4 className="text-gray-500 text-sm text-light">{checkIn.category}</h4>
                                                     </div>
                                                 </div>
                                             </>
+
+
                                         )}
 
-                                        <div className="flex-auto flex flex-col px-2">
+                                        <div className="flex-auto flex flex-col px-2 z-40">
                                             <button
                                                 className="px-2 py-1 mb-1 border-gray-100 border-2 hover:bg-gray-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
                                                 onClick={() => handleEdit(checkIn!)}
@@ -608,7 +680,7 @@ function TippaMap() {
                                             <button className="px-2 py-1 mt-1 border-red-300 border-2 hover:bg-red-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
                                                 onClick={() => handleDelete(checkIn!)}
                                             >
-                                                {deleteCheckIn && deleteCheckIn.id === checkIn.id ? "Confrim D" : "Delete"}
+                                                {deleteCheckIn && deleteCheckIn.id === checkIn.id ? "Confrim" : "Delete"}
                                             </button>
                                         </div>
 
@@ -619,7 +691,7 @@ function TippaMap() {
 
                             {!editingCheckIn && !deleteCheckIn && (
                                 <button
-                                    className="hover:bg-black hover:text-white px-1 py-1 rounded hover:scale-105 hover:transition hover:duration-100 active:scale-90 transition duration-100 active:shadow-xl"
+                                    className="hover:bg-black hover:text-white px-1 py-1 z-40 rounded hover:scale-105 hover:transition hover:duration-100 active:scale-90 transition duration-100 active:shadow-xl"
                                     onClick={() => setShowDetails(false)}
                                 >
                                     Close
@@ -634,41 +706,67 @@ function TippaMap() {
 
             </div >
             <div>
-                { 
+                {
                     <YouTube
-                        className="absolute top-1/2 left-1/2 transform scale-125 -translate-x-1/2 -translate-y-1/2 z-0 filter blur-md sm:blur-none"
+                    className={classNames("absolute top-1/2 left-1/2 transform scale-105 -translate-x-1/2 -translate-y-1/2 z-0", {
+                        "filter blur-md": !highRes,
+                        "sm:blur-none": highRes,
+                    })}
                         videoId={videoId!}
                         opts={opts}
                         onReady={onReady}
                         onEnd={onVideoEnd}
+                        onPlaybackQualityChange={handleQualityChangeEvent}
                     />
                 }
                 {clientRender && (
-                    <div
-                        className="fixed top-0 left-0 w-screen h-screen z-10 bg-black"
-                        hidden={play}
-                    >
-                        {stars.map((star, index) => (
-                            <div
-                                key={index}
-                                className="star"
-                                style={{
-                                    top: `${star.y}%`,
-                                    left: `${star.x}%`,
-                                    backgroundColor: star.color,
-                                }}
-                            ></div>
-                        ))}
-                    </div>
+                    <>
+
+                        <div
+                            id="blackoverlay"
+                            className=" fixed top-0 left-0 w-screen h-screen z-10 bg-black"
+                            hidden={play}
+                        >
+                        </div>
+                        <div
+                            id="stars"
+                            className="fixed top-0 left-0 w-screen h-screen z-20 bg-transparent"
+                        >
+                            {stars.map((star, index) => (
+                                <div
+                                    key={index}
+                                    className="star"
+                                    style={{
+                                        top: `${star.y}%`,
+                                        left: `${star.x}%`,
+                                        backgroundColor: star.color,
+                                        '--duration': star.duration,
+                                        '--delay': star.delay,
+
+                                    } as CSSProperties}
+                                ></div>
+                            ))}
+
+
+                        </div>
+                    </>
+
                 )}
+
+
                 <button
-                    className="absolute top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-40"
+                    className="absolute top-10 sm:top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-40 text-lg sm:text-base"
                     onClick={handleTogglePlay}
                 >
                     {play ? <PauseIcon className="h-8" /> : <PlayIcon className="h-8" />}
                 </button>
-
-
+                {play &&
+                    <a href={videoUrl} target="_blank" rel="noopener noreferrer">
+                        <div className="absolute top-20 sm:top-10 left-1/2 -translate-x-1/2 text-white text-lg sm:text-sm opacity-25 contrast-200 font-light z-40">
+                            {videoTitle}
+                        </div>
+                    </a>
+                }
             </div>
 
         </div >

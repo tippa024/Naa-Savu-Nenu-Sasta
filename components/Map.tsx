@@ -68,7 +68,7 @@ function TippaMap() {
 
     //bgYT
     const YTLinks = [
-        { url: 'https://www.youtube.com/watch?v=DnrpKMXS1fY', title: 'Alive' },
+        { url: 'https://www.youtube.com/watch?v=DnrpKMXS1fY', title: 'Alive', starttime: '5' },
         { url: 'https://www.youtube.com/watch?v=_vktceH8ZA0', title: 'Naatu' },
         { url: 'https://www.youtube.com/watch?v=OxNU5-iZnm4', title: 'Limitless' },
         { url: 'https://www.youtube.com/watch?v=FDuYgTLnxhM', title: 'Good Morning' },
@@ -94,6 +94,10 @@ function TippaMap() {
 
     const [play, setPlay] = useState(false);
 
+    const [firstPlay, setFirstPlay] = useState(true);
+
+    const [startTime, setStartTime] = useState(0);
+
     const onVideoEnd = () => {
         setPlay(false);
     };
@@ -113,6 +117,7 @@ function TippaMap() {
             modestbranding: 1, // Hide YouTube logo
             rel: 0, // Disable related videos
             showinfo: 0, // Hide video info
+            start: startTime, // Start at the beginning of the video
         },
     };
 
@@ -149,7 +154,7 @@ function TippaMap() {
         setDesiredQuality();
     };
 
-    const [firstPlay, setFirstPlay] = useState(true);
+    
 
     const handleTogglePlay = () => {
         if (!playerReady) return;
@@ -159,8 +164,10 @@ function TippaMap() {
             if (firstPlay) { // If it's the first play, set the video to 'Alive'
                 randomVideo = YTLinks[0];
                 setFirstPlay(false); // Set firstPlay to false after first play
+                setStartTime(5.5);
             } else {
                 randomVideo = YTLinks[Math.floor(Math.random() * YTLinks.length)];
+                setStartTime(0);
             }
             setVideoUrl(randomVideo.url);
             setVideoTitle(randomVideo.title);

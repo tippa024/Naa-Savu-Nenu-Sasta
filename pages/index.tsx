@@ -1,7 +1,7 @@
 import Head from 'next/head'
 import Header from '@/components/Head'
 import Map from '@/components/Map'
-import YouTubeAudio from "@/components/YouTubeAudio"
+
 
 
 
@@ -17,14 +17,7 @@ export default function Home() {
         <link rel="icon" href="/favicon.ico" />
       </Head>
       <main>
-  
-         
             <Map />
-         
-
-
-      
-      
       </main>
     </>
   )

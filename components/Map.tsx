@@ -715,7 +715,7 @@ function TippaMap() {
             <div>
                 {
                     <YouTube
-                    className={classNames("absolute top-1/2 left-1/2 transform scale-105 -translate-x-1/2 -translate-y-1/2 z-0", {
+                    className={classNames("absolute top-1/2 left-1/2 transform scale-[110%]  -translate-x-1/2 -translate-y-[46%] z-0", {
                         "filter blur-md": !highRes,
                         "sm:blur-none": highRes,
                     })}

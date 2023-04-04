@@ -298,16 +298,12 @@ function TippaMap() {
 
         if (!play) {
             let randomVideo;
-            if (firstPlay) { // If it's the first play, set the video to 'Alive'
-                randomVideo = YTLinks[0];
-                setStartTime(randomVideo.starttime);
-            } else {
                 randomVideo = YTLinks[Math.floor(Math.random() * YTLinks.length)];
                 setStartTime(randomVideo.starttime);
                 if (randomVideo.title === 'Alive') {
                     setFirstPlay(true);
                 }
-            }
+            
             setVideoUrl(randomVideo.url);
             setVideoTitle(randomVideo.title);
         }

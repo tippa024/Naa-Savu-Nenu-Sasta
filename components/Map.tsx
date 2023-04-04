@@ -1,5 +1,5 @@
-import React, { useState, useRef} from "react";
-import Mapbox, { GeolocateControl, NavigationControl, Marker} from "react-map-gl";
+import React, { useState, useRef, MutableRefObject } from "react";
+import Map, { GeolocateControl, NavigationControl, Marker, MapRef } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFirestore, deleteCheckInFromFirestore } from '@/firebase/firebaseHelpers';
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
@@ -13,7 +13,6 @@ import classNames from "classnames";
 import Supercluster from 'supercluster';
 import { AnyProps } from "supercluster";
 import { interpolate } from 'd3-interpolate';
-
 
 
 const categoryOptions = [
@@ -164,11 +163,13 @@ function renderMarkers(data: { features: any[]; }, zoom: number) {
 
 //main map component
 function TippaMap() {
-    const [viewState, setViewState] = React.useState({
+    const [viewState, setViewState] = useState({
         longitude: 78.4835,
         latitude: 17.408,
         zoom: 1,
+
     });
+
 
     const [clientRender, setClientRender] = useState(false);
 
@@ -214,22 +215,26 @@ function TippaMap() {
 
     //Youtube video code starts here
     const YTLinks = [
-        { url: 'https://www.youtube.com/watch?v=DnrpKMXS1fY', title: 'Alive', starttime: 6 },
-        { url: 'https://www.youtube.com/watch?v=_vktceH8ZA0', title: 'Naatu', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=OxNU5-iZnm4', title: 'Limitless', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=FDuYgTLnxhM', title: 'Good Morning', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=Zv_axdInw_o', title: 'Reboot', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=op4B9sNGi0k', title: 'Magenta Riddim', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=34Na4j8AVgA', title: 'Starboy', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar', starttime: 15 },
-        { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=7HaJArMDKgI', title: 'New York Drive', starttime: 1200 },
-        { url: 'https://www.youtube.com/watch?v=_Wb1ASZ4rBA', title: 'Mumbai Drive', starttime: 1020 },
-        { url: 'https://www.youtube.com/watch?v=m2CdUHRcqo8', title: 'Make You Mine', starttime: 0 },
-        { url: 'https://www.youtube.com/watch?v=vBzcVRdDGvc', title: 'Hardwell Miami 23', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=DnrpKMXS1fY', title: 'Alive', starttime: 6, coordinates: [0, 0], emoji: '🌍' },
+        { url: 'https://www.youtube.com/watch?v=_vktceH8ZA0', title: 'Naatu', starttime: 0, coordinates: [30.52, 50.45], emoji: '🕺🏼🕺🏼' },
+        { url: 'https://www.youtube.com/watch?v=M7xQEdKHtv0', title: 'Disco Maghreb', starttime: 0, coordinates: [1.65, 28.03], emoji: "🇩🇿" },
+        { url: 'https://www.youtube.com/watch?v=SS3lIQdKP-A', title: 'Masakali', starttime: 0, coordinates: [77.1025, 28.7], emoji: '🕊️' },
+        { url: 'https://www.youtube.com/watch?v=Zv_axdInw_o', title: 'Reboot', starttime: 0, coordinates: [4.9, 52.36], emoji: '🎶' },
+        { url: 'https://www.youtube.com/watch?v=op4B9sNGi0k', title: 'Magenta Riddim', starttime: 0, coordinates: [78.4835, 17.408], emoji: '🔥' },
+        { url: 'https://www.youtube.com/watch?v=34Na4j8AVgA', title: 'Starboy', starttime: 0, coordinates: [-118.2437, 34.0522], emoji: '⭐️' },
+        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar', starttime: 15, coordinates: [-168.966, 42.444], emoji: '🌌' },
+        { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang', starttime: 0, coordinates: [4.9, 52.36], emoji: '🪃' },
+        { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower', starttime: 0, coordinates: [-74.006, 40.708], emoji: '🕷️' },
+        { url: 'https://www.youtube.com/watch?v=7HaJArMDKgI', title: 'New York Drive', starttime: 1200, coordinates: [-74.006, 40.708], emoji: '🚘' },
+        { url: 'https://www.youtube.com/watch?v=_Wb1ASZ4rBA', title: 'Mumbai Drive', starttime: 1020, coordinates: [72.8777, 19.08], emoji: '🚘' },
+        { url: 'https://www.youtube.com/watch?v=m2CdUHRcqo8', title: 'Make You Mine', starttime: 0, coordinates: [4.9, 52.36], emoji: '❤️' },
+        { url: 'https://www.youtube.com/watch?v=vBzcVRdDGvc', title: 'Hardwell Miami 23', starttime: 0, coordinates: [-80.20, 25.7617], emoji: '🎉' },
 
     ]
+
+    const [currentEmoji, setCurrentEmoji] = useState("");
+
+
 
     function getYouTubeVideoID(url: string): string | null {
         const regex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
@@ -237,11 +242,7 @@ function TippaMap() {
         return match && match[2].length === 11 ? match[2] : null;
     }
 
-
-
     const [play, setPlay] = useState(false);
-
-    const [firstPlay, setFirstPlay] = useState(true);
 
     const [startTime, setStartTime] = useState(0);
 
@@ -249,8 +250,8 @@ function TippaMap() {
         setPlay(false);
     };
 
-    const [videoTitle, setVideoTitle] = useState('Alive');
-    const [videoUrl, setVideoUrl] = useState(YTLinks[0].url);
+    const [videoTitle, setVideoTitle] = useState('');
+    const [videoUrl, setVideoUrl] = useState(YTLinks[7].url);
     const videoId = getYouTubeVideoID(videoUrl);
     const playerRef = useRef<any>(null);
 
@@ -292,7 +293,7 @@ function TippaMap() {
             setHighRes(true);
         }
     };
- 
+
     const onReady = (event: { target: any }) => {
         playerRef.current = event.target;
         setPlayerReady(true);
@@ -300,14 +301,9 @@ function TippaMap() {
         playerRef.current.pauseVideo();
     };
 
-
-    const [blackBackgroundVisible, setBlackBackgroundVisible] = useState(true);
-
-
     const [playerOptions, setPlayerOptions] = useState(opts);
 
-    // Create a state to store the next video's information
-    const [nextVideo, setNextVideo] = useState(YTLinks[0]);
+    const [currentCoordinates, setCurrentCoordinates] = useState([-168, 42]);
 
     const handleTogglePlay = () => {
         if (!playerReady) return;
@@ -315,34 +311,27 @@ function TippaMap() {
         if (playerRef.current) {
             if (play === true) {
                 console.log("Pausing video");
-                // Select the next video and set its information
                 let randomVideo = YTLinks[Math.floor(Math.random() * YTLinks.length)];
-                setNextVideo(randomVideo);
-
-                if (nextVideo.title === "Alive") {
-                    setFirstPlay(true);
-                }
-
-                setVideoUrl(nextVideo.url);
-                setVideoTitle(nextVideo.title);
-                setStartTime(nextVideo.starttime);
+                setVideoUrl(randomVideo.url);
+                setVideoTitle(randomVideo.title);
+                setStartTime(randomVideo.starttime);
+                setCurrentCoordinates(randomVideo.coordinates);
+                setCurrentEmoji(randomVideo.emoji);
 
                 // Update playerOptions with the new startTime
                 setPlayerOptions({
                     ...playerOptions,
                     playerVars: {
                         ...playerOptions.playerVars,
-                        start: nextVideo.starttime,
+                        start: randomVideo.starttime,
                     },
                 });
                 playerRef.current.pauseVideo();
-                setBlackBackgroundVisible(true); // Show the black background when the video is paused
             } else {
 
                 console.log("Playing video");
+                centerMap({ longitude: currentCoordinates[0], latitude: currentCoordinates[1] });
                 playerRef.current.playVideo();
-                setBlackBackgroundVisible(false); // Hide the black background when the video starts playing
-
             }
 
         }
@@ -350,7 +339,7 @@ function TippaMap() {
     };
 
 
-    //handle spacebar and play/pause button
+    //handle play/pause button
     React.useEffect(() => {
         const handleKeydown = (event: globalThis.KeyboardEvent) => {
             if (event.code === 'MediaPlayPause') {
@@ -367,6 +356,19 @@ function TippaMap() {
 
     //YouTube Code ends here
 
+
+    const mapRef = useRef<MapRef>();
+
+    type CenterMapParams = {
+        longitude: number;
+        latitude: number;
+    };
+
+    //centering the map for video
+
+    const centerMap = React.useCallback(({ longitude, latitude }: CenterMapParams) => {
+        mapRef.current?.flyTo({ center: [longitude, latitude], duration: 2000 });
+    }, [play]);
 
     //initializing location state
     const [location, setLocation] = React.useState<{ latitude: number, longitude: number }>();
@@ -599,14 +601,42 @@ function TippaMap() {
         <div className="relative w-full h-screen overflow-hidden">
             <div className="relative h-screen w-full z-30">
                 <div className="absolute z-1 h-full w-full">
-                    <Mapbox
+                    <Map
+                        ref={mapRef as MutableRefObject<MapRef>}
                         {...viewState}
-                        onMove={(evt: { viewState: React.SetStateAction<{ longitude: number; latitude: number; zoom: number }>; }) => setViewState(evt.viewState)}
+                        onMove={(evt) => setViewState(evt.viewState)}
                         mapStyle="mapbox://styles/tippa24/cletvw35m00jp01ms936eiw8v"
                         projection="globe"
                         mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
                     >
                         {superCluster && renderMarkers(clusteredData, viewState.zoom)}
+
+                        {user && play && (
+                            <Marker longitude={currentCoordinates[0]} latitude={currentCoordinates[1]}>
+                                <span role="img" aria-label="emoji" style={{ fontSize: '16px' }}>
+                                    {currentEmoji}
+                                </span>
+                            </Marker>
+                        )}
+                        {!user && 
+                            YTLinks.map((video) => (
+                                <Marker
+                                    key={video.url}
+                                    longitude={video.coordinates[0]}
+                                    latitude={video.coordinates[1]}
+                                >
+                                    <span
+                                        role="img"
+                                        aria-label="emoji"
+                                        style={{ fontSize: "16px" }}
+                                    >
+                                        {video.emoji}
+                                    </span>
+                                </Marker>
+                            ))}
+
+
+
                         <div>
                             <GeolocateControl
                                 trackUserLocation={true}
@@ -643,7 +673,7 @@ function TippaMap() {
                             />
                         )}
 
-                    </Mapbox>
+                    </Map>
                 </div >
                 <div className="absolute z-40 bottom-28 left-0 w-full sm:bottom-2">
                     {   //checkin button
@@ -830,13 +860,9 @@ function TippaMap() {
             <div>
                 {
                     <YouTube
-                        className={classNames("absolute top-1/2 left-1/2 bg-black transform -translate-x-1/2  z-0", {
+                        className={classNames("absolute top-1/2 left-1/2 scale-[110%] -translate-y-[46%] bg-black transform -translate-x-1/2  z-0", {
                             "filter blur-md": !highRes,
                             "sm:blur-none": highRes,
-                            "-translate-y-[46%]": !firstPlay,
-                            "-translate-y-1/2": firstPlay,
-                            "scale-[120%]": firstPlay,
-                            "scale-[110%]": !firstPlay,
                         }
 
                         )}
@@ -855,11 +881,11 @@ function TippaMap() {
                         <div
                             id="blackoverlay"
                             className={classNames("fixed top-0 left-0 w-screen h-screen z-10 bg-black ", {
-                            "opacity-0 ": play,
-                            "opacity-100 transition-opacity duration-200 ease-in-out": !play,
+                                "opacity-0 ": play,
+                                "opacity-100 transition-opacity duration-2000 ease-in-out": !play,
                             }
                             )}
-                            
+
                         >
                         </div>
                         <div

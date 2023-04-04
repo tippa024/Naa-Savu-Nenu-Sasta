@@ -34,7 +34,8 @@
     "react-youtube": "^10.1.0",
     "supercluster": "^7.1.5",
     "turf": "^3.0.14",
-    "typescript": "5.0.2"
+    "typescript": "5.0.2",
+    "viewport-mercator-project": "^7.0.4"
   },
   "devDependencies": {
     "@types/d3-interpolate": "^3.0.1",

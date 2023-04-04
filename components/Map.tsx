@@ -20,7 +20,9 @@ const categoryOptions = [
     "House",
     "Cafe",
     "Restaurant",
-    'Coffee Shop',
+    'Coffee/Tea',
+    "Breakfast",
+    "Dessert",
     "Shopping Mall",
     "Park",
     "Beach",
@@ -29,6 +31,7 @@ const categoryOptions = [
     "Forest",
     "Zoo",
     "Aquarium",
+    "Trail",
     "Amusement Park",
     "Stadium",
     "Religious Place",
@@ -44,6 +47,7 @@ const categoryOptions = [
     "Outdoor Sports",
     "Indoor Games",
     "View Point",
+    "Birth Place",
     "Other",
 ];
 
@@ -55,8 +59,12 @@ function getCategoryEmoji(category: any) {
             return "☕";
         case "Restaurant":
             return "🍽️";
-        case "Coffee Shop":
+        case "Coffee/Tea":
             return "☕";
+        case "Breakfast":
+            return "🥞";
+        case "Dessert":
+            return "🍮";
         case "Shopping Mall":
             return "🛍️";
         case "Park":
@@ -73,6 +81,8 @@ function getCategoryEmoji(category: any) {
             return "🦁";
         case "Aquarium":
             return "🐠";
+        case "Trail":
+            return "🚶";
         case "Amusement Park":
             return "🎢";
         case "Stadium":
@@ -103,6 +113,8 @@ function getCategoryEmoji(category: any) {
             return "🎳";
         case "View Point":
             return "🏞️";
+        case "Birth Place":
+            return "👶";
         case "Other":
         default:
             return "🙃";

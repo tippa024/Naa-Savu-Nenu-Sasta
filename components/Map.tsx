@@ -821,7 +821,6 @@ function TippaMap() {
                         onReady={onReady}
                         onEnd={() => {
                             onVideoEnd();
-                            setFirstPlay(false);
                         }}
                         onPlaybackQualityChange={handleQualityChangeEvent}
                     />

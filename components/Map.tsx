@@ -1,18 +1,156 @@
 import React, { useState, useRef, ChangeEvent } from "react";
-import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source, MapLayerMouseEvent } from "react-map-gl";
+import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source } from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFirestore, deleteCheckInFromFirestore } from '@/firebase/firebaseHelpers';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, signInWithRedirect } from 'firebase/auth';
+import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import { User } from 'firebase/auth';
 import { PlayIcon, PauseIcon } from "@heroicons/react/24/outline";
 import YouTube, { YouTubeProps } from 'react-youtube';
-import { GeoJSON, Feature, Geometry, Point } from "geojson";
+import { GeoJSON, Feature, Geometry, Point, GeoJsonProperties, FeatureCollection, BBox } from "geojson";
 import { CSSProperties } from 'react';
 import classNames from "classnames";
+import Supercluster from 'supercluster';
+import { AnyProps } from "supercluster";
+import { interpolate } from 'd3-interpolate';
 
 
 
+const categoryOptions = [
+    "House",
+    "Cafe",
+    "Restaurant",
+    'Coffee Shop',
+    "Shopping Mall",
+    "Park",
+    "Beach",
+    "Lake",
+    "Mountain",
+    "Forest",
+    "Zoo",
+    "Aquarium",
+    "Amusement Park",
+    "Stadium",
+    "Religious Place",
+    "Bar",
+    "Library",
+    "Museum",
+    "Movie Theatre",
+    "Art Gallery",
+    "Music Venue",
+    "Casino",
+    "Hotel",
+    "Gym",
+    "Outdoor Sports",
+    "Indoor Games",
+    "View Point",
+    "Other",
+];
+
+function getCategoryEmoji(category: any) {
+    switch (category) {
+        case "House":
+            return "🏠";
+        case "Cafe":
+            return "☕";
+        case "Restaurant":
+            return "🍽️";
+        case "Coffee Shop":
+            return "☕";
+        case "Shopping Mall":
+            return "🛍️";
+        case "Park":
+            return "🌳";
+        case "Beach":
+            return "🏖️";
+        case "Lake":
+            return "🏞️";
+        case "Mountain":
+            return "⛰️";
+        case "Forest":
+            return "🌲";
+        case "Zoo":
+            return "🦁";
+        case "Aquarium":
+            return "🐠";
+        case "Amusement Park":
+            return "🎢";
+        case "Stadium":
+            return "🏟️";
+        case "Religious Place":
+            return "⛪";
+        case "Bar":
+            return "🍻";
+        case "Library":
+            return "📚";
+        case "Museum":
+            return "🏛️";
+        case "Movie Theatre":
+            return "🍿";
+        case "Art Gallery":
+            return "🎨";
+        case "Music Venue":
+            return "🎵";
+        case "Casino":
+            return "🎰";
+        case "Hotel":
+            return "🏨";
+        case "Gym":
+            return "🏋️";
+        case "Outdoor Sports":
+            return "🚵";
+        case "Indoor Games":
+            return "🎳";
+        case "View Point":
+            return "🏞️";
+        case "Other":
+        default:
+            return "🙃";
+    }
+}
+
+
+
+//render checkedin places using custom markers
+function renderMarkers(data: { features: any[]; }, zoom: number) {
+    return data.features.map((feature, index) => {
+        const [longitude, latitude] = feature.geometry.coordinates;
+        const category = feature.properties.Category;
+        const name = feature.properties.Name;
+
+        const emoji = getCategoryEmoji(category);
+
+        const isTextVisible = zoom >= 12 && zoom <= 22;
+        const textOpacity = isTextVisible
+            ? Math.min(Math.pow((zoom - 12) / 8, 2), 1)
+            : 0;
+            const scale = interpolate(0.9, 1);
+            const interpolatedScale = scale(textOpacity);
+
+        return (
+            <Marker key={index} longitude={longitude} latitude={latitude}>
+                <div   style={{
+            transform: `scale(${interpolatedScale})`,
+            transition: 'transform 1000ms',
+          }} >
+                    <div
+                        className="relative text-sm text-center"
+                    >
+                        {emoji}
+                    </div >
+                    <div className="text-xs  mt-1 font-light font-sans"
+                        style={{ opacity: textOpacity, visibility: isTextVisible ? 'visible' : 'hidden' }}
+                    >{name}
+                    </div>
+                </div>
+            </Marker>
+
+        );
+    });
+}
+
+
+//main map component
 function TippaMap() {
     const [viewState, setViewState] = React.useState({
         longitude: 78.4835,
@@ -26,11 +164,7 @@ function TippaMap() {
         setClientRender(true);
     }, []);
 
-
-
-
-
-    //bgstars
+    //star background code starts here
     const randomColor = () => {
         const colors = ["#ffffff", "#ffe9c4", "#d4fbff", "#ffd4d4", "#e6e6e6", "tomato", "green", "purple"];
         return colors[Math.floor(Math.random() * colors.length)];
@@ -66,21 +200,24 @@ function TippaMap() {
     const [stars, setStars] = useState(createStars(200));
 
 
-    //bgYT
+    //Youtube video code starts here
     const YTLinks = [
-        { url: 'https://www.youtube.com/watch?v=DnrpKMXS1fY', title: 'Alive', starttime: '5' },
-        { url: 'https://www.youtube.com/watch?v=_vktceH8ZA0', title: 'Naatu' },
-        { url: 'https://www.youtube.com/watch?v=OxNU5-iZnm4', title: 'Limitless' },
-        { url: 'https://www.youtube.com/watch?v=FDuYgTLnxhM', title: 'Good Morning' },
-        { url: 'https://www.youtube.com/watch?v=Zv_axdInw_o', title: 'Reboot' },
-        { url: 'https://www.youtube.com/watch?v=op4B9sNGi0k', title: 'Magenta Riddim' },
-        { url: 'https://www.youtube.com/watch?v=34Na4j8AVgA', title: 'Starboy' },
-        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar' },
-        { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang' },
-        { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower' },
-        { url: 'https://www.youtube.com/watch?v=7HaJArMDKgI', title: 'New York Drive' },
-
-
+        { url: 'https://www.youtube.com/watch?v=DnrpKMXS1fY', title: 'Alive', starttime: 6 },
+        { url: 'https://www.youtube.com/watch?v=_vktceH8ZA0', title: 'Naatu', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=OxNU5-iZnm4', title: 'Limitless', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=FDuYgTLnxhM', title: 'Good Morning', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=Zv_axdInw_o', title: 'Reboot', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=op4B9sNGi0k', title: 'Magenta Riddim', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=34Na4j8AVgA', title: 'Starboy', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar', starttime: 15 },
+        { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=7HaJArMDKgI', title: 'New York Drive', starttime: 1200 },
+        { url: 'https://www.youtube.com/watch?v=o3YadwGH0ZA', title: 'Garrix Ultra 23', starttime: 22 },
+        { url: 'https://www.youtube.com/watch?v=uPhsq1msjl8', title: 'Hardwell Ultra 23', starttime: 45 },
+        { url: 'https://www.youtube.com/watch?v=_Wb1ASZ4rBA', title: 'Mumbai Drive', starttime: 1050 },
+        { url: 'https://www.youtube.com/watch?v=m2CdUHRcqo8', title: 'Make You Mine', starttime: 0 },
+        { url: 'https://www.youtube.com/watch?v=vBzcVRdDGvc', title: 'Hardwell Miami 23', starttime: 0 },
 
     ]
 
@@ -144,7 +281,7 @@ function TippaMap() {
         const currentQuality = event.target.getPlaybackQuality();
         if (currentQuality === 'hd2160' || currentQuality === 'hd1080') {
             setHighRes(true);
-        } 
+        }
     };
 
 
@@ -154,7 +291,7 @@ function TippaMap() {
         setDesiredQuality();
     };
 
-    
+
 
     const handleTogglePlay = () => {
         if (!playerReady) return;
@@ -163,11 +300,13 @@ function TippaMap() {
             let randomVideo;
             if (firstPlay) { // If it's the first play, set the video to 'Alive'
                 randomVideo = YTLinks[0];
-                setFirstPlay(false); // Set firstPlay to false after first play
-                setStartTime(5.5);
+                setStartTime(randomVideo.starttime);
             } else {
                 randomVideo = YTLinks[Math.floor(Math.random() * YTLinks.length)];
-                setStartTime(0);
+                setStartTime(randomVideo.starttime);
+                if (randomVideo.title === 'Alive') {
+                    setFirstPlay(true);
+                }
             }
             setVideoUrl(randomVideo.url);
             setVideoTitle(randomVideo.title);
@@ -200,10 +339,7 @@ function TippaMap() {
         };
     }, [handleTogglePlay]);
 
-
-
-
-
+    //YouTube Code ends here
 
 
     //initializing location state
@@ -224,18 +360,20 @@ function TippaMap() {
     //declare a variable to store the user
     const [user, setUser] = useState<User | null>(null);
 
-    interface CustomGeoJSONFeature extends Feature {
+    interface CustomGeoJSONFeature extends Feature<Point> {
         properties: {
             Name: string;
             Category: string;
         };
-        geometry: Geometry;
+        geometry: Point;
     }
 
-    const [geoJSONData, setGeoJSONData] = React.useState<GeoJSON & { features: CustomGeoJSONFeature[] }>({
+
+    const [geoJSONData, setGeoJSONData] = React.useState<FeatureCollection<Point> & { features: CustomGeoJSONFeature[] }>({
         type: "FeatureCollection",
         features: [],
     });
+
 
     function isPoint(geometry: Geometry): geometry is Point {
         return geometry.type === 'Point';
@@ -253,21 +391,6 @@ function TippaMap() {
     //declare a variable to see if the user is deleting a check in
     const [deleteCheckIn, setDeleteCheckIn] = useState<CheckIn | null>(null);
 
-
-
-    const categoryOptions = [
-        "House",
-        "Cafe",
-        "Coffee Shop",
-        "Restaurant",
-        "Desserts",
-        "Patisserie",
-        "Breakfast",
-        "Shopping Mall",
-        "Park",
-        "Vibes",
-        "Religious Place",
-    ];
 
     //getting current location
     React.useEffect(() => {
@@ -293,7 +416,7 @@ function TippaMap() {
 
                 setGeoJSONData((prevState) => ({
                     ...prevState,
-                    features: checkIns || [],
+                    features: (checkIns || []) as CustomGeoJSONFeature[],
                 }));
 
                 setCheckInCount(checkIns!.length);
@@ -411,6 +534,40 @@ function TippaMap() {
         }
     };
 
+    //funtion to handle clustering of markers 
+    function createSuperCluster(data: FeatureCollection<Point, AnyProps>) {
+        const index = new Supercluster({
+            radius: 15,
+            maxZoom: 14,
+        });
+
+        index.load(data.features);
+        return index;
+    }
+
+    function getClusteredData(superCluster: Supercluster, zoom: number) {
+
+        const bbox = [-180, -85, 180, 85] as BBox;
+        const clusters = superCluster.getClusters(bbox, zoom);
+
+        return {
+            ...geoJSONData,
+            features: clusters,
+        };
+    }
+
+    const [superCluster, setSuperCluster] = useState<Supercluster>();
+
+
+    React.useEffect(() => {
+        if (geoJSONData) {
+            const clusterIndex = createSuperCluster(geoJSONData);
+            setSuperCluster(clusterIndex);
+        }
+    }, [geoJSONData]);
+
+
+    const clusteredData = superCluster ? getClusteredData(superCluster, viewState.zoom) : geoJSONData;
 
 
     return (
@@ -424,6 +581,7 @@ function TippaMap() {
                         projection="globe"
                         mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
                     >
+                        {superCluster && renderMarkers(clusteredData, viewState.zoom)}
                         <div>
                             <GeolocateControl
                                 trackUserLocation={true}
@@ -460,73 +618,6 @@ function TippaMap() {
 
                             />
                         )}
-
-                        <Source id="checkIns" type="geojson" data={geoJSONData}>
-                            <Layer
-                                id="checkIns-markers"
-                                type="symbol"
-                                source="checkIns"
-                                layout={{
-                                    "icon-image": [
-                                        "step",
-                                        ["zoom"],
-                                        "1F607",
-                                        6,
-                                        "Fallback",
-                                        7,
-                                        [
-                                            "match",
-                                            ["get", "Category"],
-                                            ["Coffee Shop"],
-                                            "CoffeeShop",
-                                            ["Cafe"],
-                                            "Cafe",
-                                            ["Shopping Mall"],
-                                            "Shopping",
-                                            ["House"],
-                                            "House",
-                                            ["Temple"],
-                                            "Temple",
-                                            "Fallback",
-                                        ],
-                                        22,
-                                        [
-                                            "match",
-                                            ["get", "Category"],
-                                            ["Coffee Shop"],
-                                            "CoffeeShop",
-                                            ["Cafe"],
-                                            "Cafe",
-                                            ["Shopping Mall"],
-                                            "Shopping",
-                                            ["House"],
-                                            "House",
-                                            ["Temple"],
-                                            "Temple",
-                                            "Fallback",
-                                        ],
-                                    ],
-                                    "icon-size": [
-                                        "interpolate",
-                                        ["linear"],
-                                        ["zoom"],
-                                        0,
-                                        0.1,
-                                        8,
-                                        0.5,
-                                        22,
-                                        1,
-                                    ],
-                                    "text-field": ["get", "Name"],
-                                    "text-font": ["Open Sans Condensed Light", "Arial Unicode MS Bold"],
-                                    "text-offset": [0, 1.2],
-                                    "text-anchor": "top",
-                                }}
-                                paint={{
-                                    "text-opacity": ["interpolate", ["linear"], ["zoom"], 10, 0, 13, 1],
-                                }}
-                            />
-                        </Source>
 
                     </Mapbox>
                 </div >
@@ -611,8 +702,8 @@ function TippaMap() {
                 {
                     showDetails && checkInCount > 0 &&
                     (
-                        <div className="flex flex-col absolute max-h-[80vh] overflow-y-auto top-12 sm:top-4 left-4 z-40 bg-white p-2 rounded-lg shadow hover:p-4 duration-200">
-                            {geoJSONData.features.map((feature, index) => { 
+                        <div className="flex flex-col absolute max-h-[80vh] overflow-y-auto top-12 sm:top-4 left-4 z-50 bg-white p-2 rounded-lg shadow hover:p-4 duration-200">
+                            {geoJSONData.features.map((feature, index) => {
                                 let checkIn: {
                                     name: string;
                                     category: string;
@@ -624,8 +715,8 @@ function TippaMap() {
 
                                 if (isPoint(feature.geometry)) {
                                     checkIn = {
-                                        name: feature.properties.Name,
-                                        category: feature.properties.Category,
+                                        name: feature.properties!.Name,
+                                        category: feature.properties!.Category,
                                         id: feature.id,
                                         latitude: feature.geometry.coordinates[1],
                                         longitude: feature.geometry.coordinates[0],
@@ -715,14 +806,23 @@ function TippaMap() {
             <div>
                 {
                     <YouTube
-                    className={classNames("absolute top-1/2 left-1/2 transform scale-[110%]  -translate-x-1/2 -translate-y-[46%] z-0", {
-                        "filter blur-md": !highRes,
-                        "sm:blur-none": highRes,
-                    })}
+                        className={classNames("absolute top-1/2 left-1/2 transform -translate-x-1/2  z-0", {
+                            "filter blur-md": !highRes,
+                            "sm:blur-none": highRes,
+                            "-translate-y-[46%]": !firstPlay,
+                            "-translate-y-1/2": firstPlay,
+                            "scale-[120%]": firstPlay,
+                            "scale-[110%]": !firstPlay,
+                        }
+
+                        )}
                         videoId={videoId!}
                         opts={opts}
                         onReady={onReady}
-                        onEnd={onVideoEnd}
+                        onEnd={() => {
+                            onVideoEnd();
+                            setFirstPlay(false);
+                        }}
                         onPlaybackQualityChange={handleQualityChangeEvent}
                     />
                 }
@@ -762,10 +862,10 @@ function TippaMap() {
 
 
                 <button
-                    className="absolute top-10 sm:top-2 left-1/2 transform -translate-x-1/2 text-white opacity-25 z-40 text-lg sm:text-base"
+                    className="absolute top-10 rounded-2xl sm:top-2 left-1/2 transform -translate-x-1/2 text-white opacity-100 z-40 text-lg sm:text-base"
                     onClick={handleTogglePlay}
                 >
-                    {play ? <PauseIcon className="h-8" /> : <PlayIcon className="h-8" />}
+                    {play ? <PauseIcon className="h-8 items-center" /> : <PlayIcon className="glitter-animation h-8" />}
                 </button>
                 {play &&
                     <a href={videoUrl} target="_blank" rel="noopener noreferrer">
@@ -784,3 +884,4 @@ function TippaMap() {
 
 
 export default TippaMap;
+

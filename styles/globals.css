@@ -32,8 +32,27 @@
     }
   }
 
+  @keyframes glitter {
+    0%,96%, 98% {
+      opacity: 1;
+     
+    }
+    97% {
+      opacity: 0.4;
+    
   
-    /* animation: twinkle var(--duration) infinite ease-in-out , move var(--delay)infinite linear; */
+    }
+  }
+
+  .glitter-animation {
+    animation: glitter 60s infinite;
+  }
+
+  
+
+
+  
+
   
   
   

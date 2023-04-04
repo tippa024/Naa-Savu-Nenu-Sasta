@@ -628,7 +628,7 @@ function TippaMap() {
                                     <span
                                         role="img"
                                         aria-label="emoji"
-                                        style={{ fontSize: "16px" }}
+                                        style={{ fontSize: "12px" }}
                                     >
                                         {video.emoji}
                                     </span>

@@ -221,19 +221,19 @@ function TippaMap() {
         { url: 'https://www.youtube.com/watch?v=SS3lIQdKP-A', title: 'Masakali', starttime: 0, coordinates: [77.1025, 28.7], emoji: '🕊️' },
         { url: 'https://www.youtube.com/watch?v=Zv_axdInw_o', title: 'Reboot', starttime: 0, coordinates: [-71.54, -35.67], emoji: '🎶' },
         { url: 'https://www.youtube.com/watch?v=op4B9sNGi0k', title: 'Magenta Riddim', starttime: 0, coordinates: [78.4935, 17.108], emoji: '🔥' },
-        { url: 'https://www.youtube.com/watch?v=9O-mBYAqM1c', title: 'Chamkeela Angeelesi', starttime: 0, coordinates: [78.8835, 20.408], emoji: '✨' },
+        { url: 'https://www.youtube.com/watch?v=9O-mBYAqM1c', title: 'Chamkeela Angeelesi', starttime: 20, coordinates: [79.8835, 18.408], emoji: '✨' },
         { url: 'https://www.youtube.com/watch?v=34Na4j8AVgA', title: 'Starboy', starttime: 0, coordinates: [-118.2437, 34.0522], emoji: '⭐️' },
-        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar', starttime: 15, coordinates: [-80.64, 28.57], emoji: '🌌' },
+        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar', starttime: 15, coordinates: [95.71, 37.57], emoji: '🌌' },
         { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang', starttime: 0, coordinates: [4.9, 52.36], emoji: '🪃' },
         { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower', starttime: 0, coordinates: [-74.006, 40.708], emoji: '🕷️' },
         { url: 'https://www.youtube.com/watch?v=FExS3lFEwqc', title: 'F1 23 Aus', starttime: 0, coordinates: [144.96, -37.81], emoji: '🇦🇺' },
         { url: 'https://www.youtube.com/watch?v=_Wb1ASZ4rBA', title: 'Mumbai Drive', starttime: 1020, coordinates: [72.8777, 19.08], emoji: '🚘' },
         { url: 'https://www.youtube.com/watch?v=m2CdUHRcqo8', title: 'Make You Mine', starttime: 0, coordinates: [2.35, 48.85], emoji: '❤️' },
         { url: 'https://www.youtube.com/watch?v=vBzcVRdDGvc', title: 'Hardwell Miami 23', starttime: 0, coordinates: [-80.20, 25.7617], emoji: '🎉' },
-        { url: 'https://www.youtube.com/watch?v=skO_bVXMWzU', title: 'Dubai Fireworks', starttime: 0, coordinates: [-80.20, 25.7617], emoji: '🎆' },
+        { url: 'https://www.youtube.com/watch?v=skO_bVXMWzU', title: 'Dubai Fireworks', starttime: 0, coordinates: [55.27, 25.2017], emoji: '🎆' },
     ]
 
-    const [currentEmoji, setCurrentEmoji] = useState("");
+    const [currentEmoji, setCurrentEmoji] = useState("🔥");
 
 
 
@@ -304,7 +304,7 @@ function TippaMap() {
 
     const [playerOptions, setPlayerOptions] = useState(opts);
 
-    const [currentCoordinates, setCurrentCoordinates] = useState([-168, 42]);
+    const [currentCoordinates, setCurrentCoordinates] = useState([78, 25]);
 
     const handleTogglePlay = () => {
         if (!playerReady) return;

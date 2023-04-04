@@ -1,13 +1,13 @@
-import React, { useState, useRef, ChangeEvent } from "react";
-import Mapbox, { GeolocateControl, NavigationControl, Marker, Layer, Source } from "react-map-gl";
+import React, { useState, useRef} from "react";
+import Mapbox, { GeolocateControl, NavigationControl, Marker} from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
 import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFirestore, deleteCheckInFromFirestore } from '@/firebase/firebaseHelpers';
 import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
 import { auth } from '@/firebase/firebaseConfig';
 import { User } from 'firebase/auth';
 import { PlayIcon, PauseIcon } from "@heroicons/react/24/outline";
-import YouTube, { YouTubeProps } from 'react-youtube';
-import { GeoJSON, Feature, Geometry, Point, GeoJsonProperties, FeatureCollection, BBox } from "geojson";
+import YouTube from 'react-youtube';
+import { Feature, Geometry, Point, FeatureCollection, BBox } from "geojson";
 import { CSSProperties } from 'react';
 import classNames from "classnames";
 import Supercluster from 'supercluster';
@@ -56,7 +56,7 @@ function getCategoryEmoji(category: any) {
         case "House":
             return "🏠";
         case "Cafe":
-            return "☕";
+            return "🍴";
         case "Restaurant":
             return "🍽️";
         case "Coffee/Tea":
@@ -136,15 +136,15 @@ function renderMarkers(data: { features: any[]; }, zoom: number) {
         const textOpacity = isTextVisible
             ? Math.min(Math.pow((zoom - 12) / 8, 2), 1)
             : 0;
-            const scale = interpolate(0.9, 1);
-            const interpolatedScale = scale(textOpacity);
+        const scale = interpolate(0.9, 1);
+        const interpolatedScale = scale(textOpacity);
 
         return (
             <Marker key={index} longitude={longitude} latitude={latitude}>
-                <div   style={{
-            transform: `scale(${interpolatedScale})`,
-            transition: 'transform 1000ms',
-          }} >
+                <div style={{
+                    transform: `scale(${interpolatedScale})`,
+                    transition: 'transform 1000ms',
+                }} >
                     <div
                         className="relative text-sm text-center"
                     >
@@ -225,9 +225,7 @@ function TippaMap() {
         { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang', starttime: 0 },
         { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower', starttime: 0 },
         { url: 'https://www.youtube.com/watch?v=7HaJArMDKgI', title: 'New York Drive', starttime: 1200 },
-        { url: 'https://www.youtube.com/watch?v=o3YadwGH0ZA', title: 'Garrix Ultra 23', starttime: 22 },
-        { url: 'https://www.youtube.com/watch?v=uPhsq1msjl8', title: 'Hardwell Ultra 23', starttime: 45 },
-        { url: 'https://www.youtube.com/watch?v=_Wb1ASZ4rBA', title: 'Mumbai Drive', starttime: 1050 },
+        { url: 'https://www.youtube.com/watch?v=_Wb1ASZ4rBA', title: 'Mumbai Drive', starttime: 1020 },
         { url: 'https://www.youtube.com/watch?v=m2CdUHRcqo8', title: 'Make You Mine', starttime: 0 },
         { url: 'https://www.youtube.com/watch?v=vBzcVRdDGvc', title: 'Hardwell Miami 23', starttime: 0 },
 
@@ -254,19 +252,18 @@ function TippaMap() {
     const [videoTitle, setVideoTitle] = useState('Alive');
     const [videoUrl, setVideoUrl] = useState(YTLinks[0].url);
     const videoId = getYouTubeVideoID(videoUrl);
-    console.log(videoId);
     const playerRef = useRef<any>(null);
 
     const opts = {
         height: '1080', // Set height to screen height
         width: '1920', // Set width to '0' to only play audio
         playerVars: {
-            autoplay: 1, // Do not auto-play the video
+            autoplay: 0, // Do not auto-play the video
             controls: 0, // Hide controls
             modestbranding: 1, // Hide YouTube logo
             rel: 0, // Disable related videos
             showinfo: 0, // Hide video info
-            start: startTime, // Start at the beginning of the video
+            start: startTime, // Start video at given time
         },
     };
 
@@ -295,47 +292,68 @@ function TippaMap() {
             setHighRes(true);
         }
     };
-
-
+ 
     const onReady = (event: { target: any }) => {
         playerRef.current = event.target;
         setPlayerReady(true);
         setDesiredQuality();
+        playerRef.current.pauseVideo();
     };
 
 
+    const [blackBackgroundVisible, setBlackBackgroundVisible] = useState(true);
+
+
+    const [playerOptions, setPlayerOptions] = useState(opts);
+
+    // Create a state to store the next video's information
+    const [nextVideo, setNextVideo] = useState(YTLinks[0]);
 
     const handleTogglePlay = () => {
         if (!playerReady) return;
 
-        if (!play) {
-            let randomVideo;
-                randomVideo = YTLinks[Math.floor(Math.random() * YTLinks.length)];
-                setStartTime(randomVideo.starttime);
-                if (randomVideo.title === 'Alive') {
+        if (playerRef.current) {
+            if (play === true) {
+                console.log("Pausing video");
+                // Select the next video and set its information
+                let randomVideo = YTLinks[Math.floor(Math.random() * YTLinks.length)];
+                setNextVideo(randomVideo);
+
+                if (nextVideo.title === "Alive") {
                     setFirstPlay(true);
                 }
-            
-            setVideoUrl(randomVideo.url);
-            setVideoTitle(randomVideo.title);
-        }
 
-        if (playerRef.current) {
-            if (play) {
-                console.log('Pausing video');
+                setVideoUrl(nextVideo.url);
+                setVideoTitle(nextVideo.title);
+                setStartTime(nextVideo.starttime);
+
+                // Update playerOptions with the new startTime
+                setPlayerOptions({
+                    ...playerOptions,
+                    playerVars: {
+                        ...playerOptions.playerVars,
+                        start: nextVideo.starttime,
+                    },
+                });
                 playerRef.current.pauseVideo();
+                setBlackBackgroundVisible(true); // Show the black background when the video is paused
             } else {
-                console.log('Playing video');
+
+                console.log("Playing video");
                 playerRef.current.playVideo();
+                setBlackBackgroundVisible(false); // Hide the black background when the video starts playing
+
             }
-            setPlay(!play);
+
         }
+        setPlay(!play);
     };
+
 
     //handle spacebar and play/pause button
     React.useEffect(() => {
         const handleKeydown = (event: globalThis.KeyboardEvent) => {
-            if (event.code === 'Space' || event.code === 'MediaPlayPause') {
+            if (event.code === 'MediaPlayPause') {
                 handleTogglePlay();
                 event.preventDefault();
             }
@@ -577,7 +595,6 @@ function TippaMap() {
 
     const clusteredData = superCluster ? getClusteredData(superCluster, viewState.zoom) : geoJSONData;
 
-
     return (
         <div className="relative w-full h-screen overflow-hidden">
             <div className="relative h-screen w-full z-30">
@@ -620,7 +637,6 @@ function TippaMap() {
                                     const newLat = e.lngLat.lat;
                                     setLocation({ latitude: newLat, longitude: newLng });
                                 }}
-                                //style={{backgroundImage: "url('https://img.icons8.com/ios/50/000000/marker.png')", backgroundSize: 'cover', backgroundRepeat: 'no-repeat', width: '50px', height: '50px'}}
                                 scale={1}
                                 color="red"
 
@@ -814,7 +830,7 @@ function TippaMap() {
             <div>
                 {
                     <YouTube
-                        className={classNames("absolute top-1/2 left-1/2 transform -translate-x-1/2  z-0", {
+                        className={classNames("absolute top-1/2 left-1/2 bg-black transform -translate-x-1/2  z-0", {
                             "filter blur-md": !highRes,
                             "sm:blur-none": highRes,
                             "-translate-y-[46%]": !firstPlay,
@@ -838,8 +854,12 @@ function TippaMap() {
 
                         <div
                             id="blackoverlay"
-                            className=" fixed top-0 left-0 w-screen h-screen z-10 bg-black"
-                            hidden={play}
+                            className={classNames("fixed top-0 left-0 w-screen h-screen z-10 bg-black ", {
+                            "opacity-0 ": play,
+                            "opacity-100 transition-opacity duration-200 ease-in-out": !play,
+                            }
+                            )}
+                            
                         >
                         </div>
                         <div
@@ -869,7 +889,7 @@ function TippaMap() {
 
 
                 <button
-                    className="absolute top-10 rounded-2xl sm:top-2 left-1/2 transform -translate-x-1/2 text-white opacity-100 z-40 text-lg sm:text-base"
+                    className="absolute top-10 rounded-2xl sm:top-2 left-1/2 transform -translate-x-1/2 text-white opacity-50 z-40 text-lg sm:text-base"
                     onClick={handleTogglePlay}
                 >
                     {play ? <PauseIcon className="h-8 items-center" /> : <PlayIcon className="glitter-animation h-8" />}

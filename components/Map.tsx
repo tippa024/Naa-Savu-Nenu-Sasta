@@ -223,10 +223,10 @@ function TippaMap() {
         { url: 'https://www.youtube.com/watch?v=op4B9sNGi0k', title: 'Magenta Riddim', starttime: 0, coordinates: [78.4935, 17.108], emoji: '🔥' },
         { url: 'https://www.youtube.com/watch?v=9O-mBYAqM1c', title: 'Chamkeela Angeelesi', starttime: 20, coordinates: [79.8835, 18.408], emoji: '✨' },
         { url: 'https://www.youtube.com/watch?v=34Na4j8AVgA', title: 'Starboy', starttime: 0, coordinates: [-118.2437, 34.0522], emoji: '⭐️' },
-        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar', starttime: 15, coordinates: [95.71, 37.57], emoji: '🌌' },
+        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar', starttime: 15, coordinates: [-95.71, 37.57], emoji: '🌌' },
         { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang', starttime: 0, coordinates: [4.9, 52.36], emoji: '🪃' },
         { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower', starttime: 0, coordinates: [-74.006, 40.708], emoji: '🕷️' },
-        { url: 'https://www.youtube.com/watch?v=FExS3lFEwqc', title: 'F1 23 Aus', starttime: 0, coordinates: [144.96, -37.81], emoji: '🇦🇺' },
+        { url: 'https://www.youtube.com/watch?v=jGetqo_SC9U', title: 'Ey Bidda', starttime: 0, coordinates: [79.3, 13.7], emoji: '🫳🏽' },
         { url: 'https://www.youtube.com/watch?v=_Wb1ASZ4rBA', title: 'Mumbai Drive', starttime: 1020, coordinates: [72.8777, 19.08], emoji: '🚘' },
         { url: 'https://www.youtube.com/watch?v=m2CdUHRcqo8', title: 'Make You Mine', starttime: 0, coordinates: [2.35, 48.85], emoji: '❤️' },
         { url: 'https://www.youtube.com/watch?v=vBzcVRdDGvc', title: 'Hardwell Miami 23', starttime: 0, coordinates: [-80.20, 25.7617], emoji: '🎉' },
@@ -247,12 +247,14 @@ function TippaMap() {
 
     const [startTime, setStartTime] = useState(0);
 
+    const [AutoPlay, setAutoPlay] = useState(0);
+
     const onVideoEnd = () => {
         setPlay(false);
     };
 
     const [videoTitle, setVideoTitle] = useState('');
-    const [videoUrl, setVideoUrl] = useState(YTLinks[7].url);
+    const [videoUrl, setVideoUrl] = useState(YTLinks[8].url);
     const videoId = getYouTubeVideoID(videoUrl);
     const playerRef = useRef<any>(null);
 
@@ -260,7 +262,7 @@ function TippaMap() {
         height: '1080', // Set height to screen height
         width: '1920', // Set width to '0' to only play audio
         playerVars: {
-            autoplay: 0, // Do not auto-play the video
+            autoplay: AutoPlay, // Do not auto-play the video
             controls: 0, // Hide controls
             modestbranding: 1, // Hide YouTube logo
             rel: 0, // Disable related videos
@@ -306,6 +308,7 @@ function TippaMap() {
 
     const [currentCoordinates, setCurrentCoordinates] = useState([78, 25]);
 
+    // to play random video when clicking play button
     const handleTogglePlay = () => {
         if (!playerReady) return;
 
@@ -325,6 +328,7 @@ function TippaMap() {
                     playerVars: {
                         ...playerOptions.playerVars,
                         start: randomVideo.starttime,
+                        autoplay: 0,
                     },
                 });
                 playerRef.current.pauseVideo();
@@ -339,6 +343,35 @@ function TippaMap() {
         setPlay(!play);
     };
 
+    // to play a particular video when clicking on a marker
+    const playVideoFromMarker = (video) => {
+        setVideoUrl(video.url);
+        setVideoTitle(video.title);
+        setStartTime(video.starttime);
+        setCurrentCoordinates(video.coordinates);
+        setCurrentEmoji(video.emoji);
+        setAutoPlay(1);
+      
+        // Update playerOptions with the new startTime
+        setPlayerOptions({
+          ...playerOptions,
+          playerVars: {
+            ...playerOptions.playerVars,
+            start: video.starttime,
+          },
+        });
+      
+        centerMap({ longitude: video.coordinates[0], latitude: video.coordinates[1] });
+      
+        if (!play) {
+          setPlay(true);
+          playerRef.current.playVideo();
+        } else {
+          playerRef.current.seekTo(video.starttime, true);
+          
+        }
+      };
+      
 
     //handle play/pause button
     React.useEffect(() => {
@@ -598,6 +631,9 @@ function TippaMap() {
 
     const clusteredData = superCluster ? getClusteredData(superCluster, viewState.zoom) : geoJSONData;
 
+    const [mapLoaded, setMapLoaded] = useState(false);
+
+
     return (
         <div className="relative w-full h-screen overflow-hidden">
             <div className="relative h-screen w-full z-30">
@@ -609,6 +645,7 @@ function TippaMap() {
                         mapStyle="mapbox://styles/tippa24/cletvw35m00jp01ms936eiw8v"
                         projection="globe"
                         mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
+                        onLoad={() => setMapLoaded(true)}
                     >
                         {superCluster && renderMarkers(clusteredData, viewState.zoom)}
 
@@ -619,12 +656,13 @@ function TippaMap() {
                                 </span>
                             </Marker>
                         )}
-                        {!user && 
+                        {!user && mapLoaded && (
                             YTLinks.map((video) => (
                                 <Marker
                                     key={video.url}
                                     longitude={video.coordinates[0]}
                                     latitude={video.coordinates[1]}
+                                    onClick={() => {playVideoFromMarker(video)}}
                                 >
                                     <span
                                         role="img"
@@ -634,7 +672,7 @@ function TippaMap() {
                                         {video.emoji}
                                     </span>
                                 </Marker>
-                            ))}
+                            )))}
 
 
 

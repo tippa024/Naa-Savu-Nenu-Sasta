@@ -344,7 +344,7 @@ function TippaMap() {
     };
 
     // to play a particular video when clicking on a marker
-    const playVideoFromMarker = (video) => {
+    const playVideoFromMarker = (video: { url: any; title: any; starttime: any; coordinates: any; emoji: any; }) => {
         setVideoUrl(video.url);
         setVideoTitle(video.title);
         setStartTime(video.starttime);

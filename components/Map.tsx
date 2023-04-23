@@ -31,7 +31,13 @@ function TMap() {
     zoom: 1,
   });
 
+  const [showLabels, setShowLabels] = useState(false);
+
+
+
+
   const mapRef = useRef<MapRef>(null);
+
 
   const centerMap = useCallback(
     ({

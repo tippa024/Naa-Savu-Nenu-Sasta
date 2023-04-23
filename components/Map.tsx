@@ -1,979 +1,708 @@
-import React, { useState, useRef, MutableRefObject } from "react";
-import Map, { GeolocateControl, NavigationControl, Marker, MapRef } from "react-map-gl";
+import React, { useState, useEffect, useRef, useCallback } from "react";
+import Map, {
+  GeolocateControl,
+  NavigationControl,
+  Marker,
+  MapRef,
+} from "react-map-gl";
 import "mapbox-gl/dist/mapbox-gl.css";
-import { saveCheckInToFirestore, fetchCheckInsFromFirestore, updateCheckInInFirestore, deleteCheckInFromFirestore } from '@/firebase/firebaseHelpers';
-import { getAuth, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut } from 'firebase/auth';
-import { auth } from '@/firebase/firebaseConfig';
-import { User } from 'firebase/auth';
-import { PlayIcon, PauseIcon } from "@heroicons/react/24/outline";
-import YouTube from 'react-youtube';
-import { Feature, Geometry, Point, FeatureCollection, BBox } from "geojson";
-import { CSSProperties } from 'react';
+import {
+  saveCheckInToFirestore,
+  fetchCheckInsFromFirestore,
+  updateCheckInInFirestore,
+  deleteCheckInFromFirestore,
+} from "@/firebase/firebaseHelpers";
+import { getAuth, onAuthStateChanged, User } from "firebase/auth";
+import { AiOutlineEdit, AiOutlineLogout } from "react-icons/ai";
+import { MdEdit, MdDelete, MdOutlineCancel } from "react-icons/md";
+import { IoIosArrowUp } from "react-icons/io";
+
+import { categoryOptions, getCategoryEmoji } from "./Category";
+import ClusteredMarkers from "./ClusteredMarkers";
+import { Timestamp } from "firebase/firestore";
+import { handleGoogleSignIn, handleLogout } from "./Auth";
 import classNames from "classnames";
-import Supercluster from 'supercluster';
-import { AnyProps } from "supercluster";
-import { interpolate } from 'd3-interpolate';
 
+function TMap() {
+  //Loadmap//////////////////////////////////////////////////////////////////
+  const [viewState, setViewState] = useState({
+    longitude: 78.4835,
+    latitude: 17.408,
+    zoom: 1,
+  });
 
-const categoryOptions = [
-    "House",
-    "Cafe",
-    "Restaurant",
-    'Coffee/Tea',
-    "Breakfast",
-    "Dessert",
-    "Shopping Mall",
-    "Park",
-    "Beach",
-    "Lake",
-    "Mountain",
-    "Forest",
-    "Zoo",
-    "Aquarium",
-    "Trail",
-    "Amusement Park",
-    "Stadium",
-    "Religious Place",
-    "Bar",
-    "Library",
-    "Museum",
-    "Movie Theatre",
-    "Art Gallery",
-    "Music Venue",
-    "Casino",
-    "Hotel",
-    "Gym",
-    "Outdoor Sports",
-    "Indoor Games",
-    "View Point",
-    "Birth Place",
-    "Other",
-];
+  const mapRef = useRef<MapRef>(null);
 
-function getCategoryEmoji(category: any) {
-    switch (category) {
-        case "House":
-            return "🏠";
-        case "Cafe":
-            return "🍴";
-        case "Restaurant":
-            return "🍽️";
-        case "Coffee/Tea":
-            return "☕";
-        case "Breakfast":
-            return "🥞";
-        case "Dessert":
-            return "🍮";
-        case "Shopping Mall":
-            return "🛍️";
-        case "Park":
-            return "🌳";
-        case "Beach":
-            return "🏖️";
-        case "Lake":
-            return "🏞️";
-        case "Mountain":
-            return "⛰️";
-        case "Forest":
-            return "🌲";
-        case "Zoo":
-            return "🦁";
-        case "Aquarium":
-            return "🐠";
-        case "Trail":
-            return "🚶";
-        case "Amusement Park":
-            return "🎢";
-        case "Stadium":
-            return "🏟️";
-        case "Religious Place":
-            return "⛪";
-        case "Bar":
-            return "🍻";
-        case "Library":
-            return "📚";
-        case "Museum":
-            return "🏛️";
-        case "Movie Theatre":
-            return "🍿";
-        case "Art Gallery":
-            return "🎨";
-        case "Music Venue":
-            return "🎵";
-        case "Casino":
-            return "🎰";
-        case "Hotel":
-            return "🏨";
-        case "Gym":
-            return "🏋️";
-        case "Outdoor Sports":
-            return "🚵";
-        case "Indoor Games":
-            return "🎳";
-        case "View Point":
-            return "🏞️";
-        case "Birth Place":
-            return "👶";
-        case "Other":
-        default:
-            return "🙃";
-    }
-}
+  const centerMap = useCallback(
+    ({
+      longitude,
+      latitude,
+      zoom,
+      duration,
+    }: {
+      longitude: number;
+      latitude: number;
+      zoom: number;
+      duration: number;
+    }) => {
+      mapRef.current?.flyTo({ center: [longitude, latitude], zoom, duration });
+    },
+    []
+  );
 
+  const [mapLoaded, setMapLoaded] = useState(false);
 
+  //CheckInState//////////////////////////////////////////////////////////////////
+  const [CheckIn, setCheckIn] = useState<{
+    CheckingIn: boolean;
+    Name: string | null;
+    Category: string;
+    Location: { Latitude: number; Longitude: number } | null;
+    LiveLocationAvailability: boolean;
+  }>({
+    CheckingIn: false,
+    Name: null,
+    Category: "others",
+    Location: { Latitude: 0, Longitude: 0 } || null,
+    LiveLocationAvailability: true,
+  });
 
-//render checkedin places using custom markers
-function renderMarkers(data: { features: any[]; }, zoom: number) {
-    return data.features.map((feature, index) => {
-        const [longitude, latitude] = feature.geometry.coordinates;
-        const category = feature.properties.Category;
-        const name = feature.properties.Name;
+  //EditCheckInState//////////////////////////////////////////////////////////////////
+  const [EditCheckIn, setEditCheckIn] = useState<{
+    ViewList: boolean;
+    ViewCheckIn: boolean;
+    Edit: boolean;
+    Delete: boolean;
+    Name: string | null;
+    Location: { Latitude: number; Longitude: number } | null;
+    Category: string | null;
+    Date: Date | null;
+    Id: string | null;
+  }>({
+    ViewList: false,
+    ViewCheckIn: false,
+    Edit: false,
+    Delete: false,
+    Name: null,
+    Location: { Latitude: 0, Longitude: 0 } || null,
+    Category: null,
+    Date: null,
+    Id: null,
+  });
 
-        const emoji = getCategoryEmoji(category);
+  //Auth//////////////////////////////////////////////////////////////////
+  const [user, setUser] = useState<User | null>(null);
 
-        const isTextVisible = zoom >= 12 && zoom <= 22;
-        const textOpacity = isTextVisible
-            ? Math.min(Math.pow((zoom - 12) / 8, 2), 1)
-            : 0;
-        const scale = interpolate(0.9, 1);
-        const interpolatedScale = scale(textOpacity);
-
-        return (
-            <Marker key={index} longitude={longitude} latitude={latitude}>
-                <div style={{
-                    transform: `scale(${interpolatedScale})`,
-                    transition: 'transform 1000ms',
-                }} >
-                    <div
-                        className="relative text-sm text-center"
-                    >
-                        {emoji}
-                    </div >
-                    <div className="text-xs  mt-1 font-light font-sans"
-                        style={{ opacity: textOpacity, visibility: isTextVisible ? 'visible' : 'hidden' }}
-                    >{name}
-                    </div>
-                </div>
-            </Marker>
-
-        );
-    });
-}
-
-
-//main map component
-function TippaMap() {
-    const [viewState, setViewState] = useState({
-        longitude: 78.4835,
-        latitude: 17.408,
-        zoom: 1,
-
+  useEffect(() => {
+    const auth = getAuth();
+    const unsubscribe = onAuthStateChanged(auth, (loggedInUser) => {
+      setUser(loggedInUser);
     });
 
-
-    const [clientRender, setClientRender] = useState(false);
-
-    React.useEffect(() => {
-        setClientRender(true);
-    }, []);
-
-    //star background code starts here
-    const randomColor = () => {
-        const colors = ["#ffffff", "#ffe9c4", "#d4fbff", "#ffd4d4", "#e6e6e6", "tomato", "green", "purple"];
-        return colors[Math.floor(Math.random() * colors.length)];
+    return () => {
+      unsubscribe();
     };
+  }, []);
 
+  //DiplaycorrectDataonMap//////////////////////////////////////////////////////////////////
+  const [geoJSONData, setGeoJSONData] = React.useState<
+    Array<{
+      Name: string;
+      Category: string;
+      Time: Timestamp;
+      Location: { Latitude: number; Longitude: number };
+      Id: string;
+    }>
+  >([]);
 
+  //getting check ins from firestore
+  useEffect(() => {
+    if (user) {
+      const loadCheckIns = async () => {
+        const checkIns = await fetchCheckInsFromFirestore(user.uid);
 
-    const randomDuration = () => {
-        return (Math.random() * 3 + 5) + "s";
-    };
-
-    const randomDelay = () => {
-        return (Math.random() * 3) + "s";
-    };
-
-
-
-    const createStars = (count: number) => {
-        const stars = [];
-        for (let i = 0; i < count; i++) {
-            stars.push({
-                x: Math.random() * 100,
-                y: Math.random() * 100,
-                color: randomColor(),
-                duration: randomDuration(),
-                delay: randomDelay(),
-            });
-        }
-        return stars;
-    };
-
-
-    const [stars, setStars] = useState(createStars(200));
-
-
-    //Youtube video code starts here
-    const YTLinks = [
-        { url: 'https://www.youtube.com/watch?v=DnrpKMXS1fY', title: 'Alive', starttime: 6, coordinates: [0, 0], emoji: '🌍' },
-        { url: 'https://www.youtube.com/watch?v=_vktceH8ZA0', title: 'Naatu', starttime: 0, coordinates: [30.52, 50.45], emoji: '🕺🏼🕺🏼' },
-        { url: 'https://www.youtube.com/watch?v=M7xQEdKHtv0', title: 'Disco Maghreb', starttime: 0, coordinates: [1.65, 28.03], emoji: "🇩🇿" },
-        { url: 'https://www.youtube.com/watch?v=SS3lIQdKP-A', title: 'Masakali', starttime: 0, coordinates: [77.1025, 28.7], emoji: '🕊️' },
-        { url: 'https://www.youtube.com/watch?v=Zv_axdInw_o', title: 'Reboot', starttime: 0, coordinates: [-71.54, -35.67], emoji: '🎶' },
-        { url: 'https://www.youtube.com/watch?v=op4B9sNGi0k', title: 'Magenta Riddim', starttime: 0, coordinates: [78.4935, 17.108], emoji: '🔥' },
-        { url: 'https://www.youtube.com/watch?v=9O-mBYAqM1c', title: 'Chamkeela Angeelesi', starttime: 20, coordinates: [79.8835, 18.408], emoji: '✨' },
-        { url: 'https://www.youtube.com/watch?v=34Na4j8AVgA', title: 'Starboy', starttime: 0, coordinates: [-118.2437, 34.0522], emoji: '⭐️' },
-        { url: 'https://www.youtube.com/watch?v=665o5OwV_KU', title: 'Interstellar', starttime: 15, coordinates: [-95.71, 37.57], emoji: '🌌' },
-        { url: 'https://www.youtube.com/watch?v=j8GSRFS-8tc', title: 'Boomerang', starttime: 0, coordinates: [4.9, 52.36], emoji: '🪃' },
-        { url: 'https://www.youtube.com/watch?v=ApXoWvfEYVU', title: 'Sunflower', starttime: 0, coordinates: [-74.006, 40.708], emoji: '🕷️' },
-        { url: 'https://www.youtube.com/watch?v=jGetqo_SC9U', title: 'Ey Bidda', starttime: 0, coordinates: [79.3, 13.7], emoji: '🫳🏽' },
-        { url: 'https://www.youtube.com/watch?v=_Wb1ASZ4rBA', title: 'Mumbai Drive', starttime: 1020, coordinates: [72.8777, 19.08], emoji: '🚘' },
-        { url: 'https://www.youtube.com/watch?v=m2CdUHRcqo8', title: 'Make You Mine', starttime: 0, coordinates: [2.35, 48.85], emoji: '❤️' },
-        { url: 'https://www.youtube.com/watch?v=vBzcVRdDGvc', title: 'Hardwell Miami 23', starttime: 0, coordinates: [-80.20, 25.7617], emoji: '🎉' },
-        { url: 'https://www.youtube.com/watch?v=skO_bVXMWzU', title: 'Dubai Fireworks', starttime: 0, coordinates: [55.27, 25.2017], emoji: '🎆' },
-    ]
-
-    const [currentEmoji, setCurrentEmoji] = useState("🔥");
-
-
-
-    function getYouTubeVideoID(url: string): string | null {
-        const regex = /^.*(youtu.be\/|v\/|u\/\w\/|embed\/|watch\?v=|&v=)([^#&?]*).*/;
-        const match = url.match(regex);
-        return match && match[2].length === 11 ? match[2] : null;
-    }
-
-    const [play, setPlay] = useState(false);
-
-    const [startTime, setStartTime] = useState(0);
-
-    const [AutoPlay, setAutoPlay] = useState(0);
-
-    const onVideoEnd = () => {
-        setPlay(false);
-    };
-
-    const [videoTitle, setVideoTitle] = useState('');
-    const [videoUrl, setVideoUrl] = useState(YTLinks[8].url);
-    const videoId = getYouTubeVideoID(videoUrl);
-    const playerRef = useRef<any>(null);
-
-    const opts = {
-        height: '1080', // Set height to screen height
-        width: '1920', // Set width to '0' to only play audio
-        playerVars: {
-            autoplay: AutoPlay, // Do not auto-play the video
-            controls: 0, // Hide controls
-            modestbranding: 1, // Hide YouTube logo
-            rel: 0, // Disable related videos
-            showinfo: 0, // Hide video info
-            start: startTime, // Start video at given time
-        },
-    };
-
-    const [playerReady, setPlayerReady] = useState(false);
-
-    const setDesiredQuality = () => {
-        const availableQualityLevels = playerRef.current.getAvailableQualityLevels();
-
-        // Force the video quality to be 1080p or above
-        if (availableQualityLevels.includes("hd2160")) {
-            playerRef.current.setPlaybackQuality("hd2160");
-        } else if (availableQualityLevels.includes("hd1080")) {
-            playerRef.current.setPlaybackQuality("hd1080");
-        } else {
-            // If 1080p and 2160p are not available, use the highest available quality
-            playerRef.current.setPlaybackQuality(availableQualityLevels[0]);
-        }
-    };
-
-    const [highRes, setHighRes] = useState(false);
-
-    // New function to handle quality change event
-    const handleQualityChangeEvent = (event: { target: any }) => {
-        const currentQuality = event.target.getPlaybackQuality();
-        if (currentQuality === 'hd2160' || currentQuality === 'hd1080') {
-            setHighRes(true);
-        }
-    };
-
-    const onReady = (event: { target: any }) => {
-        playerRef.current = event.target;
-        setPlayerReady(true);
-        setDesiredQuality();
-        playerRef.current.pauseVideo();
-    };
-
-    const [playerOptions, setPlayerOptions] = useState(opts);
-
-    const [currentCoordinates, setCurrentCoordinates] = useState([78, 25]);
-
-    // to play random video when clicking play button
-    const handleTogglePlay = () => {
-        if (!playerReady) return;
-
-        if (playerRef.current) {
-            if (play === true) {
-                console.log("Pausing video");
-                let randomVideo = YTLinks[Math.floor(Math.random() * YTLinks.length)];
-                setVideoUrl(randomVideo.url);
-                setVideoTitle(randomVideo.title);
-                setStartTime(randomVideo.starttime);
-                setCurrentCoordinates(randomVideo.coordinates);
-                setCurrentEmoji(randomVideo.emoji);
-
-                // Update playerOptions with the new startTime
-                setPlayerOptions({
-                    ...playerOptions,
-                    playerVars: {
-                        ...playerOptions.playerVars,
-                        start: randomVideo.starttime,
-                        autoplay: 0,
-                    },
-                });
-                playerRef.current.pauseVideo();
-            } else {
-
-                console.log("Playing video");
-                centerMap({ longitude: currentCoordinates[0], latitude: currentCoordinates[1] });
-                playerRef.current.playVideo();
-            }
-
-        }
-        setPlay(!play);
-    };
-
-    // to play a particular video when clicking on a marker
-    const playVideoFromMarker = (video: { url: any; title: any; starttime: any; coordinates: any; emoji: any; }) => {
-        setVideoUrl(video.url);
-        setVideoTitle(video.title);
-        setStartTime(video.starttime);
-        setCurrentCoordinates(video.coordinates);
-        setCurrentEmoji(video.emoji);
-        setAutoPlay(1);
-      
-        // Update playerOptions with the new startTime
-        setPlayerOptions({
-          ...playerOptions,
-          playerVars: {
-            ...playerOptions.playerVars,
-            start: video.starttime,
+        const formattedCheckIns = checkIns!.map((checkIn) => ({
+          Name: checkIn.name,
+          Category: checkIn.category,
+          Time: checkIn.time,
+          Location: {
+            Latitude: checkIn.latitude,
+            Longitude: checkIn.longitude,
           },
-        });
-      
-        centerMap({ longitude: video.coordinates[0], latitude: video.coordinates[1] });
-      
-        if (!play) {
-          setPlay(true);
-          playerRef.current.playVideo();
-        } else {
-          playerRef.current.seekTo(video.starttime, true);
-          
-        }
+          Id: checkIn.id,
+        }));
+
+        setGeoJSONData(formattedCheckIns);
       };
-      
 
-    //handle play/pause button
-    React.useEffect(() => {
-        const handleKeydown = (event: globalThis.KeyboardEvent) => {
-            if (event.code === 'MediaPlayPause') {
-                handleTogglePlay();
-                event.preventDefault();
-            }
-        };
-
-        document.addEventListener('keydown', handleKeydown);
-        return () => {
-            document.removeEventListener('keydown', handleKeydown);
-        };
-    }, [handleTogglePlay]);
-
-    //YouTube Code ends here
-
-
-    const mapRef = useRef<MapRef>();
-
-    type CenterMapParams = {
-        longitude: number;
-        latitude: number;
-    };
-
-    //centering the map for video
-
-    const centerMap = React.useCallback(({ longitude, latitude }: CenterMapParams) => {
-        mapRef.current?.flyTo({ center: [longitude, latitude], duration: 2000 });
-    }, [play]);
-
-    //initializing location state
-    const [location, setLocation] = React.useState<{ latitude: number, longitude: number }>();
-
-    //initializing a boolean variable to check if location is available
-    const [locationAvailable, setLocationAvailable] = React.useState(true);
-
-    //decalre a boolean variable to check if the user has checked in
-    const [checkedIn, setCheckedIn] = React.useState(false);
-
-    //declare a variable to store the name of the marker
-    const [markerName, setMarkerName] = React.useState('null');
-
-    //declare a variable to store the category of the marker
-    const [category, setCategory] = React.useState('null');
-
-    //declare a variable to store the user
-    const [user, setUser] = useState<User | null>(null);
-
-    interface CustomGeoJSONFeature extends Feature<Point> {
-        properties: {
-            Name: string;
-            Category: string;
-        };
-        geometry: Point;
+      loadCheckIns();
     }
+  }, [CheckIn.CheckingIn, user, EditCheckIn.Edit, EditCheckIn.Delete]);
 
+  //CheckIn//////////////////////////////////////////////////////////////////
 
-    const [geoJSONData, setGeoJSONData] = React.useState<FeatureCollection<Point> & { features: CustomGeoJSONFeature[] }>({
-        type: "FeatureCollection",
-        features: [],
-    });
-
-
-    function isPoint(geometry: Geometry): geometry is Point {
-        return geometry.type === 'Point';
+  const handleCheckIn = () => {
+    if (!user) {
+      handleGoogleSignIn();
+    } else if (user && !CheckIn.CheckingIn) {
+      setCheckIn((prevState) => ({ ...prevState, CheckingIn: true }));
+      setCheckIn((prevState) => ({
+        ...prevState,
+        Location: {
+          Latitude: viewState.latitude,
+          Longitude: viewState.longitude,
+        },
+      }));
+      centerMap({
+        longitude: viewState.longitude,
+        latitude: viewState.latitude,
+        zoom: viewState.zoom > 14 ? viewState.zoom : 14,
+        duration: 2000,
+      });
+    } else if (user && CheckIn.CheckingIn) {
+      saveCheckIn();
     }
+  };
+  const saveCheckIn = async () => {
+    if (
+      CheckIn.Name !== null &&
+      CheckIn.Category !== "others" &&
+      CheckIn.Location &&
+      user
+    ) {
+      const checkInData = {
+        latitude: CheckIn.Location.Latitude,
+        longitude: CheckIn.Location.Longitude,
+        name: CheckIn.Name,
+        category: CheckIn.Category,
+        uid: user.uid,
+        time: Timestamp.fromDate(new Date()),
+      };
 
-    //declare a variable to check the number of check ins
-    const [checkInCount, setCheckInCount] = React.useState(0);
-
-    //declare a boolean variable to check if the user wants to see the details of the check in
-    const [showDetails, setShowDetails] = useState(false);
-
-    //declare a variable to see if the user is editing a check in
-    const [editingCheckIn, setEditingCheckIn] = useState<CheckIn | null>(null);
-
-    //declare a variable to see if the user is deleting a check in
-    const [deleteCheckIn, setDeleteCheckIn] = useState<CheckIn | null>(null);
-
-
-    //getting current location
-    React.useEffect(() => {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                position => {
-                    const { latitude, longitude } = position.coords;
-                    setLocation({ latitude, longitude });
-                },
-                error => {
-                    console.log(`Error getting location: ${error.message}`);
-                    setLocationAvailable(false);
-                }
-            );
-        }
-    }, [checkedIn]);
-
-    //getting check ins from firestore
-    React.useEffect(() => {
-        if (user) {
-            const loadCheckIns = async () => {
-                const checkIns = await fetchCheckInsFromFirestore(user.uid);
-
-                setGeoJSONData((prevState) => ({
-                    ...prevState,
-                    features: (checkIns || []) as CustomGeoJSONFeature[],
-                }));
-
-                setCheckInCount(checkIns!.length);
-            };
-
-            loadCheckIns();
-        }
-    }, [checkedIn, user, editingCheckIn, deleteCheckIn]);
-
-    //auth
-    React.useEffect(() => {
-        const auth = getAuth();
-        const unsubscribe = onAuthStateChanged(auth, (loggedInUser) => {
-            setUser(loggedInUser);
-        });
-
-        return () => {
-            unsubscribe();
-        };
-    }, []);
-
-
-
-    //function to handle google sign in
-    const handleGoogleSignIn = async () => {
-        try {
-            const provider = new GoogleAuthProvider();
-            await signInWithPopup(auth, provider);
-        } catch (error) {
-            console.error('Error signing in:', error);
-        }
-    };
-
-    //function to handle check in
-    const handleCheckIn = () => {
-        if (locationAvailable) {
-            if (!user) {
-                handleGoogleSignIn();
-            } else {
-                setCheckedIn(true);
-            }
-        }
-    };
-
-    //function to handle logout
-    const handleLogout = async () => {
-        try {
-            const auth = getAuth();
-            await signOut(auth);
-        } catch (error) {
-            console.error('Error signing out:', error);
-        }
-    };
-
-    //function to save the location to firestore
-    const saveCheckIn = async () => {
-        if (markerName !== "null" && category !== "null" && location && user) {
-            const checkInData = {
-                latitude: location.latitude,
-                longitude: location.longitude,
-                name: markerName,
-                category: category,
-                uid: user.uid,
-            };
-
-            await saveCheckInToFirestore(checkInData);
-
-            // Reset markerName and category
-            setMarkerName("null");
-            setCategory("null");
-        }
-    };
-
-    // Create an interface for CheckIn
-    interface CheckIn {
-        name: string;
-        category: string;
-        id: string;
-        latitude: number;
-        longitude: number;
+      await saveCheckInToFirestore(checkInData);
+      setCheckIn((prevState) => ({ ...prevState, CheckingIn: false }));
+      setCheckIn((prevState) => ({ ...prevState, Name: null }));
+      setCheckIn((prevState) => ({ ...prevState, Category: "others" }));
+      setCheckIn((prevState) => ({
+        ...prevState,
+        Location: { Latitude: 0, Longitude: 0 } || null,
+      }));
     }
+  };
 
-    //function to handle edit
-    const handleEdit = (checkIn: CheckIn) => {
-        if (editingCheckIn && editingCheckIn.id === checkIn.id) {
-            // Save the changes to Firebase
-            if (user) {
-                updateCheckInInFirestore(checkIn.id, {
-                    latitude: checkIn.latitude,
-                    longitude: checkIn.longitude,
-                    name: checkIn.name,
-                    category: checkIn.category,
-                }, user.uid);
-            }
+  //EditCheckIn//////////////////////////////////////////////////////////////////
 
-            // Reset the editing state
-            setEditingCheckIn(null);
-        } else {
-            setEditingCheckIn(checkIn);
-            setLocation({ latitude: checkIn.latitude, longitude: checkIn.longitude });
-        }
-    };
+  const handleViewCheckIn = (Id: string | null) => {
+    const checkIn = geoJSONData.find((checkIn) => checkIn.Id === Id);
 
-    //function to handle delete
-    const handleDelete = (checkIn: CheckIn) => {
-        if (deleteCheckIn && deleteCheckIn.id === checkIn.id) {
-            // Delete the check in from Firebase
-            deleteCheckInFromFirestore(checkIn.id);
+    if (checkIn) {
+      setEditCheckIn((prevState) => ({ ...prevState, ViewCheckIn: true }));
+      setEditCheckIn((prevState) => ({ ...prevState, Name: checkIn.Name }));
+      setEditCheckIn((prevState) => ({
+        ...prevState,
+        Category: checkIn.Category,
+      }));
+      setEditCheckIn((prevState) => ({
+        ...prevState,
+        Location: checkIn.Location,
+      }));
+      setEditCheckIn((prevState) => ({ ...prevState, Id: checkIn.Id }));
+      if (checkIn.Time) {
+        setEditCheckIn((prevState) => ({
+          ...prevState,
+          Date: checkIn.Time.toDate(),
+        }));
+      }
 
-            // Reset the delete state
-            setDeleteCheckIn(null);
-        } else {
-            setDeleteCheckIn(checkIn);
-
-        }
-    };
-
-    //funtion to handle clustering of markers 
-    function createSuperCluster(data: FeatureCollection<Point, AnyProps>) {
-        const index = new Supercluster({
-            radius: 15,
-            maxZoom: 14,
-        });
-
-        index.load(data.features);
-        return index;
+      centerMap({
+        longitude: checkIn.Location.Longitude,
+        latitude: checkIn.Location.Latitude,
+        zoom: viewState.zoom,
+        duration: 2000,
+      });
     }
+  };
 
-    function getClusteredData(superCluster: Supercluster, zoom: number) {
-
-        const bbox = [-180, -85, 180, 85] as BBox;
-        const clusters = superCluster.getClusters(bbox, zoom);
-
-        return {
-            ...geoJSONData,
-            features: clusters,
-        };
+  const handleBack = (Id: string | null) => {
+    if (EditCheckIn.ViewCheckIn && !EditCheckIn.Edit && !EditCheckIn.Delete) {
+      setEditCheckIn((prevState) => ({ ...prevState, ViewCheckIn: false }));
     }
+    if (EditCheckIn.ViewCheckIn && EditCheckIn.Edit && !EditCheckIn.Delete) {
+      const checkIn = geoJSONData.find((checkIn) => checkIn.Id === Id);
+      setEditCheckIn((prevState) => ({
+        ...prevState,
+        Name: checkIn?.Name || null,
+      }));
+      setEditCheckIn((prevState) => ({
+        ...prevState,
+        Category: checkIn?.Category || null,
+      }));
+      setEditCheckIn((prevState) => ({
+        ...prevState,
+        Location: checkIn?.Location || null,
+      }));
+      setEditCheckIn((prevState) => ({ ...prevState, Edit: false }));
+    }
+    if (EditCheckIn.ViewCheckIn && !EditCheckIn.Edit && EditCheckIn.Delete) {
+      setEditCheckIn((prevState) => ({ ...prevState, Delete: false }));
+    }
+  };
 
-    const [superCluster, setSuperCluster] = useState<Supercluster>();
+  const handleEditCheckIn = async (Id: string | null) => {
+    if (!EditCheckIn.Edit) {
+      setEditCheckIn((prevState) => ({ ...prevState, Edit: true }));
+      centerMap({
+        longitude: EditCheckIn.Location?.Longitude || 0,
+        latitude: EditCheckIn.Location?.Latitude || 0,
+        zoom: viewState.zoom > 14 ? viewState.zoom : 14,
+        duration: 2000,
+      });
+    }
+    if (
+      EditCheckIn.Edit &&
+      EditCheckIn.Name &&
+      EditCheckIn.Category &&
+      EditCheckIn.Location &&
+      EditCheckIn.Date &&
+      Id &&
+      user
+    ) {
+      const checkInData = {
+        latitude: EditCheckIn.Location.Latitude,
+        longitude: EditCheckIn.Location.Longitude,
+        name: EditCheckIn.Name,
+        category: EditCheckIn.Category,
+      };
 
+      await updateCheckInInFirestore(Id, checkInData, user.uid);
+      setEditCheckIn((prevState) => ({ ...prevState, Edit: false }));
+    }
+  };
 
-    React.useEffect(() => {
-        if (geoJSONData) {
-            const clusterIndex = createSuperCluster(geoJSONData);
-            setSuperCluster(clusterIndex);
-        }
-    }, [geoJSONData]);
+  const handleDeleteCheckIn = async (Id: string | null) => {
+    if (!EditCheckIn.Delete) {
+      setEditCheckIn((prevState) => ({ ...prevState, Delete: true }));
+    }
+    if (EditCheckIn.Delete && Id) {
+      await deleteCheckInFromFirestore(Id);
+      setEditCheckIn((prevState) => ({ ...prevState, Delete: false }));
+      setEditCheckIn((prevState) => ({ ...prevState, ViewCheckIn: false }));
+    }
+  };
 
+  return (
+    <div className="relative w-full h-screen overflow-hidden">
+      <div className="relative h-screen w-full z-30">
+        <div className="absolute z-10 h-full w-full">
+          <Map
+            ref={mapRef}
+            {...viewState}
+            onMove={(evt) => setViewState(evt.viewState)}
+            mapStyle="mapbox://styles/mapbox/light-v9"
+            projection="globe"
+            mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
+            onLoad={() => setMapLoaded(true)}
+          >
+            {user && mapLoaded && (
+              <ClusteredMarkers data={geoJSONData} zoom={viewState.zoom} />
+            )}
 
-    const clusteredData = superCluster ? getClusteredData(superCluster, viewState.zoom) : geoJSONData;
-
-    const [mapLoaded, setMapLoaded] = useState(false);
-
-
-    return (
-        <div className="relative w-full h-screen overflow-hidden">
-            <div className="relative h-screen w-full z-30">
-                <div className="absolute z-1 h-full w-full">
-                    <Map
-                        ref={mapRef as MutableRefObject<MapRef>}
-                        {...viewState}
-                        onMove={(evt) => setViewState(evt.viewState)}
-                        mapStyle="mapbox://styles/tippa24/cletvw35m00jp01ms936eiw8v"
-                        projection="globe"
-                        mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
-                        onLoad={() => setMapLoaded(true)}
-                    >
-                        {superCluster && renderMarkers(clusteredData, viewState.zoom)}
-
-                        {user && play && (
-                            <Marker longitude={currentCoordinates[0]} latitude={currentCoordinates[1]}>
-                                <span role="img" aria-label="emoji" style={{ fontSize: '16px' }}>
-                                    {currentEmoji}
-                                </span>
-                            </Marker>
-                        )}
-                        {!user && mapLoaded && (
-                            YTLinks.map((video) => (
-                                <Marker
-                                    key={video.url}
-                                    longitude={video.coordinates[0]}
-                                    latitude={video.coordinates[1]}
-                                    onClick={() => {playVideoFromMarker(video)}}
-                                >
-                                    <span
-                                        role="img"
-                                        aria-label="emoji"
-                                        style={{ fontSize: "12px" }}
-                                    >
-                                        {video.emoji}
-                                    </span>
-                                </Marker>
-                            )))}
-
-
-
-                        <div>
-                            <GeolocateControl
-                                trackUserLocation={true}
-                                positionOptions={{ enableHighAccuracy: true }}
-                                position="bottom-right"
-                                showUserLocation={true}
-                                showAccuracyCircle={true}
-                                showUserHeading={true}
-                                style={{ position: "absolute", bottom: "40px", right: "10px", background: 'none', padding: '2' }}
-
-                            />
-                        </div>
-
-                        <NavigationControl
-                            position="bottom-right"
-                            visualizePitch={true}
-                            style={{ position: "absolute", bottom: "80px", right: "10px", background: 'none', border: 'none', padding: '2' }}
-                        />
-
-                        {checkedIn && location && (
-                            <Marker
-
-                                latitude={location.latitude}
-                                longitude={location.longitude}
-                                draggable
-                                onDragEnd={(e) => {
-                                    const newLng = e.lngLat.lng;
-                                    const newLat = e.lngLat.lat;
-                                    setLocation({ latitude: newLat, longitude: newLng });
-                                }}
-                                scale={1}
-                                color="red"
-
-                            />
-                        )}
-
-                    </Map>
-                </div >
-                <div className="absolute z-40 bottom-28 left-0 w-full sm:bottom-2">
-                    {   //checkin button
-                        checkedIn === false &&
-                        (<button
-                            className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10  text-gray-500 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                            onClick={() => handleCheckIn()}
-                        >
-                            {(locationAvailable) ? "Check In" : "Location Unavailable please try after sometime"}
-                        </button>)
-                    }
-                    {
-                        checkedIn && location &&
-                        (
-                            <button
-                                id="CheckInConfirmButton"
-                                className="absolute bottom-2 left-1/2 transform -translate-x-1/2 z-10 bg-white rounded-lg px-2 py-1 font-semibold hover:bg-slate-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                                onClick={() => { setCheckedIn(false); saveCheckIn() }}
-                            >
-                                Confirm
-                            </button>)
-                    }
-                    {
-                        checkedIn &&
-
-
-                        (
-                            <div className="">
-                                <input id="CheckInNameInput"
-                                    className="absolute bottom-20 inset-x-0 transform  z-10 rounded-md bg-transparent border-b-2 text-center text-gray-700  placeholder-gray-500 focus:border-0 "
-                                    placeholder="Enter Check-In Name" type="text" onChange={(e) => setMarkerName(e.target.value)} />
-                            </div>
-                        )
-                    }
-                    {
-
-
-                        checkedIn &&
-
-                        (
-                            <div className="absolute bottom-12 left-1/2 -translate-x-1/2">
-                                <select
-                                    id="CheckInCategoryInput"
-                                    className=" bg-gray-100 border-2 border-white text-black text-sm rounded-lg focus:ring-white focus:border-white required"
-                                    value={category}
-                                    onChange={(e) => setCategory(e.target.value)}
-                                >
-                                    <option value="">Select Category</option>
-                                    {categoryOptions.map((option) => (
-                                        <option key={option} value={option}>
-                                            {option}
-                                        </option>
-                                    ))}
-                                </select>
-                            </div>
-                        )
-                    }
-
-                </div>
-                {user &&
-
-                    <button
-                        className="absolute top-10 sm:top-2 right-2  z-10  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                        onClick={() => handleLogout()}
-                    >
-                        Logout
-                    </button>
-                }
-
-                {user && checkInCount > 0 &&
-
-                    <button
-                        className="absolute top-10 sm:top-2 left-2  z-40  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-black hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
-                        onClick={() => setShowDetails(true)}
-                    >
-                        Edit CheckIn
-                    </button>
-                }
-
-                {
-                    showDetails && checkInCount > 0 &&
-                    (
-                        <div className="flex flex-col absolute max-h-[80vh] overflow-y-auto top-12 sm:top-4 left-4 z-50 bg-white p-2 rounded-lg shadow hover:p-4 duration-200">
-                            {geoJSONData.features.map((feature, index) => {
-                                let checkIn: {
-                                    name: string;
-                                    category: string;
-                                    id: any;
-                                    latitude: number;
-                                    longitude: number;
-                                } | null = null;
-
-
-                                if (isPoint(feature.geometry)) {
-                                    checkIn = {
-                                        name: feature.properties!.Name,
-                                        category: feature.properties!.Category,
-                                        id: feature.id,
-                                        latitude: feature.geometry.coordinates[1],
-                                        longitude: feature.geometry.coordinates[0],
-                                    };
-                                } else {
-                                    return null; // Return null if geometry is not of type Point
-                                }
-
-
-                                return (
-                                    <div key={index} className="flex flex-auto p-2 mb-2 border-gray-200  z-40 rounded shadow-sm hover:shadow-xl hover:scale-105 transform transition duration-100">
-                                        {editingCheckIn && editingCheckIn.id === checkIn.id ? (
-                                            <div className="flex-col flex basis-1/2">
-                                                <>
-                                                    <input
-                                                        type="text"
-                                                        placeholder={checkIn.name}
-                                                        onChange={(e) => checkIn!.name = e.target.value}
-                                                        className="basis-1/2 mb-2 border-gray-200 border-2 rounded"
-                                                    />
-                                                    <select
-                                                        placeholder={checkIn.category}
-                                                        onChange={(e) => checkIn!.category = e.target.value}
-                                                        className="text-gray-500 bais-1/2 text-sm font-light"
-                                                    >
-                                                        <option value="">Select Category</option>
-                                                        {categoryOptions.map((option) => (
-                                                            <option key={option} value={option}>
-                                                                {option}
-                                                            </option>
-                                                        ))}
-                                                    </select>
-                                                </>
-                                            </div>
-                                        ) : (
-
-
-                                            <>
-                                                <div className=" flex-col basis-1/2 z-40">
-                                                    <div className="basis-1/2">
-                                                        <h3 className="font-semibold">{checkIn.name}</h3>
-                                                    </div>
-                                                    <div className="basis-1/2">
-                                                        <h4 className="text-gray-500 text-sm text-light">{checkIn.category}</h4>
-                                                    </div>
-                                                </div>
-                                            </>
-
-
-                                        )}
-
-                                        <div className="flex-auto flex flex-col px-2 z-40">
-                                            <button
-                                                className="px-2 py-1 mb-1 border-gray-100 border-2 hover:bg-gray-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
-                                                onClick={() => handleEdit(checkIn!)}
-                                            >
-                                                {editingCheckIn && editingCheckIn.id === checkIn.id ? "Save" : "Edit"}
-                                            </button>
-                                            <button className="px-2 py-1 mt-1 border-red-300 border-2 hover:bg-red-500 hover:border-white hover:text-white text-sm rounded-lg font-semibold hover:scale-105 transform translation duration-75"
-                                                onClick={() => handleDelete(checkIn!)}
-                                            >
-                                                {deleteCheckIn && deleteCheckIn.id === checkIn.id ? "Confrim" : "Delete"}
-                                            </button>
-                                        </div>
-
-                                    </div>
-                                );
-                            })}
-
-
-                            {!editingCheckIn && !deleteCheckIn && (
-                                <button
-                                    className="hover:bg-black hover:text-white px-1 py-1 z-40 rounded hover:scale-105 hover:transition hover:duration-100 active:scale-90 transition duration-100 active:shadow-xl"
-                                    onClick={() => setShowDetails(false)}
-                                >
-                                    Close
-                                </button>
-                            )}
-
-
-
-                        </div>
-                    )
-                }
-
-            </div >
             <div>
-                {
-                    <YouTube
-                        className={classNames("absolute top-1/2 left-1/2 scale-[110%] -translate-y-[46%] bg-black transform -translate-x-1/2  z-0", {
-                            "filter blur-md": !highRes,
-                            "sm:blur-none": highRes,
-                        }
-
-                        )}
-                        videoId={videoId!}
-                        opts={opts}
-                        onReady={onReady}
-                        onEnd={() => {
-                            onVideoEnd();
-                        }}
-                        onPlaybackQualityChange={handleQualityChangeEvent}
-                    />
-                }
-                {clientRender && (
-                    <>
-
-                        <div
-                            id="blackoverlay"
-                            className={classNames("fixed top-0 left-0 w-screen h-screen z-10 bg-black ", {
-                                "opacity-0 ": play,
-                                "opacity-100 transition-opacity duration-2000 ease-in-out": !play,
-                            }
-                            )}
-
-                        >
-                        </div>
-                        <div
-                            id="stars"
-                            className="fixed top-0 left-0 w-screen h-screen z-20 bg-transparent"
-                        >
-                            {stars.map((star, index) => (
-                                <div
-                                    key={index}
-                                    className="star"
-                                    style={{
-                                        top: `${star.y}%`,
-                                        left: `${star.x}%`,
-                                        backgroundColor: star.color,
-                                        '--duration': star.duration,
-                                        '--delay': star.delay,
-
-                                    } as CSSProperties}
-                                ></div>
-                            ))}
-
-
-                        </div>
-                    </>
-
-                )}
-
-
-                <button
-                    className="absolute top-10 rounded-2xl sm:top-2 left-1/2 transform -translate-x-1/2 text-white opacity-50 z-40 text-lg sm:text-base"
-                    onClick={handleTogglePlay}
-                >
-                    {play ? <PauseIcon className="h-8 items-center" /> : <PlayIcon className="glitter-animation h-8" />}
-                </button>
-                {play &&
-                    <a href={videoUrl} target="_blank" rel="noopener noreferrer">
-                        <div className="absolute top-20 sm:top-10 left-1/2 -translate-x-1/2 text-white text-lg sm:text-sm opacity-25 contrast-200 font-light z-40">
-                            {videoTitle}
-                        </div>
-                    </a>
-                }
+              <GeolocateControl
+                trackUserLocation={true}
+                positionOptions={{ enableHighAccuracy: true }}
+                position="bottom-right"
+                showUserLocation={true}
+                showAccuracyCircle={true}
+                showUserHeading={true}
+                style={{
+                  position: "absolute",
+                  bottom: "40px",
+                  right: "10px",
+                  background: "none",
+                  padding: "2",
+                }}
+              />
+              <NavigationControl
+                position="bottom-right"
+                visualizePitch={true}
+                style={{
+                  position: "absolute",
+                  bottom: "80px",
+                  right: "10px",
+                  background: "none",
+                  border: "none",
+                  padding: "2",
+                }}
+              />
             </div>
 
-        </div >
+            {CheckIn.CheckingIn && CheckIn.Location ? (
+              <Marker
+                latitude={CheckIn.Location.Latitude}
+                longitude={CheckIn.Location.Longitude}
+                draggable
+                onDragEnd={(e) => {
+                  const newLng = e.lngLat.lng;
+                  const newLat = e.lngLat.lat;
+                  setCheckIn((prevState) => ({
+                    ...prevState,
+                    Location: { Latitude: newLat, Longitude: newLng },
+                  }));
+                  centerMap({
+                    longitude: newLng,
+                    latitude: newLat,
+                    zoom: viewState.zoom,
+                    duration: 300,
+                  });
+                }}
+                scale={1}
+                color="red"
+              />
+            ) : null}
+            {EditCheckIn.Edit && (
+              <Marker
+                latitude={EditCheckIn.Location?.Latitude || 0}
+                longitude={EditCheckIn.Location?.Longitude || 0}
+                draggable
+                onDragEnd={(e) => {
+                  const newLng = e.lngLat.lng;
+                  const newLat = e.lngLat.lat;
+                  setEditCheckIn((prevState) => ({
+                    ...prevState,
+                    Location: { Latitude: newLat, Longitude: newLng },
+                  }));
+                }}
+                scale={1}
+                color="red"
+              >
+                <div className="text-3xl">📍</div>
+              </Marker>
+            )}
+          </Map>
+        </div>
+        <div className="absolute flex-col items-center z-40 bottom-28 left-1/2 -translate-x-1/2 sm:bottom-4 lg:bottom-10">
+          {CheckIn.CheckingIn && (
+            <div className="flex flex-col items-center">
+              <div>
+                <input
+                  id="CheckInNameInput"
+                  className="w-full transform z-10 rounded-md bg-transparent text-center text-gray-700 placeholder-gray-500"
+                  placeholder="Enter Check-In Name"
+                  type="text"
+                  onChange={(e) =>
+                    setCheckIn((prevState) => ({
+                      ...prevState,
+                      Name: e.target.value,
+                    }))
+                  }
+                />
+              </div>
 
-    );
+              <div className="my-2">
+                <select
+                  id="CheckInCategoryInput"
+                  className="bg-gray-100 text-black text-sm rounded-lg focus:ring-white required"
+                  value={CheckIn.Category}
+                  onChange={(e) =>
+                    setCheckIn((prevState) => ({
+                      ...prevState,
+                      Category: e.target.value,
+                    }))
+                  }
+                >
+                  <option value="">Select Category</option>
+                  {categoryOptions.map((option) => (
+                    <option key={option} value={option}>
+                      {option} ({getCategoryEmoji(option)})
+                    </option>
+                  ))}
+                </select>
+              </div>
+            </div>
+          )}
 
+          <div className="relative flex flex-col items-center justify-center">
+            {
+              //checkin button
+              CheckIn.CheckingIn ? (
+                <button
+                  className="rounded-lg px-2 py-1 font-semibold hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl bg-black text-white hover:text-black hover:bg-white"
+                  onClick={handleCheckIn}
+                  disabled={!CheckIn.Name || !CheckIn.Category}
+                >
+                  Confirm
+                </button>
+              ) : (
+                <button
+                  className={classNames(
+                    "rounded-lg px-2 py-1 font-semibold active:scale-90 transition duration-100 active:shadow-xl ",
+                    {
+                      "bg-gradient-to-r from-green-500 to-blue-500 text-white hover:text-gradient-to-r   hover:scale-105 transition duration-200 hover:text-slate-100":
+                        !user,
+                      "bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500 opacity-80 hover:scale-105 hover:text-white hover:opacity-100  transition":
+                        user,
+                    }
+                  )}
+                  onClick={() => {
+                    handleCheckIn();
+                  }}
+                >
+                  {user ? "Check In" : "Start Your World"}
+                </button>
+              )
+            }
+          </div>
+
+          {CheckIn.CheckingIn && (
+            <button
+              id="CheckInCancelButton"
+              className="absolute left-32 bottom-0 mx-4 my-1 p-1  z-10 bg-transparent text-lg text-red-500 rounded-lg px-1 font-semibold hover:bg-red-500 hover:text-white hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+              onClick={() => {
+                setCheckIn((prevState) => ({
+                  ...prevState,
+                  CheckingIn: false,
+                }));
+              }}
+            >
+              <MdOutlineCancel />
+            </button>
+          )}
+        </div>
+
+        {user && (
+          <button
+            className="absolute top-1 right-1 z-10  text-gray-500 opacity-50 text-xl bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-red-500 hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+            onClick={() => handleLogout()}
+          >
+            <AiOutlineLogout />
+          </button>
+        )}
+        <div>
+          {user && (
+            <button
+              className={classNames(
+                "absolute bottom-8 left-1 rounded-lg px-2 py-1  z-40 text-2xl",
+                {
+                  " text-green-500 opacity-70 hover:opacity-100 hover:bg-green-500 hover:text-white ":
+                    EditCheckIn.ViewList,
+                  "text-gray-500 opacity-50 hover:bg-green-500 hover:opacity-100 hover:text-white":
+                    !EditCheckIn.ViewList,
+                }
+              )}
+              onClick={() =>
+                setEditCheckIn((prevState) => ({
+                  ...prevState,
+                  ViewList: !prevState.ViewList,
+                }))
+              }
+            >
+              <AiOutlineEdit />
+            </button>
+          )}
+
+          {user && (
+            <div className=" absolute flex max-w-[100vw] top-10 z-40 left-1/2 -translate-x-1/2 items-center overflow-x-auto scrollbar-hide">
+              {EditCheckIn.ViewList &&
+                geoJSONData.map((info) => (
+                  <div
+                    key={info.Id}
+                    className={classNames(
+                      "flex whitespace-nowrap  items-center ",
+                      {
+                        "  p-1 m-2 hover:scale-105 transition duration-200 bg-gray-100 bg-opacity-25 border-green-500 border  hover:bg-opacity-80 rounded-xl shadow-lg hover:shadow-xl ":
+                          EditCheckIn.ViewCheckIn && EditCheckIn.Id === info.Id,
+                        "  p-1 m-2  bg-gray-100 shadow-sm rounded-lg hover:shadow-lg hover:bg-green-500 hover:scale-105 active:scale-90 transition-scale duration-100 ease-out":
+                          !EditCheckIn.ViewCheckIn,
+                        " p-1 m-2  bg-gray-100 scale-90 hover:scale-100 transition duration-150 rounded-lg":
+                          EditCheckIn.ViewCheckIn && EditCheckIn.Id !== info.Id,
+                      }
+                    )}
+                  >
+                    {EditCheckIn.ViewCheckIn && EditCheckIn.Id === info.Id ? (
+                      <>
+                        {EditCheckIn.ViewCheckIn &&
+                          EditCheckIn.Name &&
+                          EditCheckIn.Category && (
+                            <div className="flex-col">
+                              {EditCheckIn.Edit ? (
+                                <>
+                                  <div className="flex m-1 justify-center items-center">
+                                    <input
+                                      id="CheckInNameInput"
+                                      className="rounded-md bg-transparent border-b-2 text-center text-gray-700  placeholder-gray-500 focus:border-0 "
+                                      placeholder={EditCheckIn.Name}
+                                      type="text"
+                                      onChange={(e) =>
+                                        setEditCheckIn((prevState) => ({
+                                          ...prevState,
+                                          Name: e.target.value,
+                                        }))
+                                      }
+                                    />
+                                  </div>
+                                  <div className="flex justify-center items-center">
+                                    <select
+                                      id="CheckInCategoryInput"
+                                      className=" bg-gray-100 border-2 border-white text-black text-sm rounded-lg focus:ring-white focus:border-white required"
+                                      value={EditCheckIn.Category}
+                                      onChange={(e) =>
+                                        setEditCheckIn((prevState) => ({
+                                          ...prevState,
+                                          Category: e.target.value,
+                                        }))
+                                      }
+                                    >
+                                      <option value="">Select Category</option>
+                                      {categoryOptions.map((option) => (
+                                        <option key={option} value={option}>
+                                          {option} ({getCategoryEmoji(option)})
+                                        </option>
+                                      ))}
+                                    </select>
+                                  </div>
+                                </>
+                              ) : (
+                                <>
+                                  <div className="flex   px-2 mx-1 justify-center items-center">
+                                    <div className="font-bold px-1">
+                                      {EditCheckIn.Name}
+                                    </div>
+                                    <div className="font-light text-sm">
+                                      {getCategoryEmoji(EditCheckIn.Category!)}
+                                    </div>
+                                  </div>
+                                </>
+                              )}
+                              <div>
+                                <div className="text-sm font-light flex justify-center items-center ">
+                                  {EditCheckIn.Edit ? (
+                                    <></>
+                                  ) : (
+                                    <>
+                                      {" "}
+                                      <div className="px-1 ">
+                                        {EditCheckIn.Category}
+                                      </div>
+                                      <div className="px-1 text-gray-500">
+                                        {EditCheckIn.Location!.Latitude.toFixed(
+                                          2
+                                        )}
+                                        ,
+                                        {EditCheckIn.Location!.Longitude.toFixed(
+                                          2
+                                        )}
+                                      </div>
+                                    </>
+                                  )}
+                                </div>
+                                <div
+                                  className={classNames(
+                                    "text-xs font-semibold flex  justify-center items-center",
+                                    {
+                                      "p-2": EditCheckIn.Edit,
+                                      "pb-2 px-1": !EditCheckIn.Edit,
+                                    }
+                                  )}
+                                >
+                                  <div>
+                                    {EditCheckIn.Date
+                                      ? EditCheckIn.Date!.toDateString()
+                                      : null}
+                                  </div>
+                                </div>
+                                <div className="flex justify-center">
+                                  {!EditCheckIn.Delete && (
+                                    <button
+                                      className={classNames(
+                                        "flex justify-center  text-yellow-500 basis-1/3 rounded-xl border-2 border-yellow-500 hover:bg-yellow-500 hover:text-white",
+                                        {
+                                          "text m-1 px-1 rounded-2xl":
+                                            EditCheckIn.Edit,
+                                          "text-xl m-1 p-1 rounded-lg":
+                                            !EditCheckIn.Edit,
+                                        }
+                                      )}
+                                      onClick={() => {
+                                        handleEditCheckIn(EditCheckIn.Id);
+                                      }}
+                                    >
+                                      {EditCheckIn.Edit ? "Save" : <MdEdit />}
+                                    </button>
+                                  )}
+                                  {!EditCheckIn.Edit && (
+                                    <button
+                                      className={classNames(
+                                        "flex justify-center text-red-500 basis-1/3  rounded-xl border-2 border-red-500 hover:bg-red-500 hover:text-white",
+                                        {
+                                          "text mx-2 my-1 px-3 rounded-2xl ":
+                                            EditCheckIn.Delete,
+                                          "text-xl m-1 p-1 rounded-lg":
+                                            !EditCheckIn.Delete,
+                                        }
+                                      )}
+                                      onClick={() => {
+                                        handleDeleteCheckIn(EditCheckIn.Id);
+                                      }}
+                                    >
+                                      {EditCheckIn.Delete ? (
+                                        "Sure"
+                                      ) : (
+                                        <MdDelete />
+                                      )}
+                                    </button>
+                                  )}
+                                </div>
+                                <div
+                                  className={classNames(
+                                    "relative top-1 font-extrabold flex mb-1 justify-center rounded-full hover:scale-105 duration-100 ease-out",
+                                    {
+                                      "bg-green-500 mx-1 hover:scale-105":
+                                        EditCheckIn.Delete || EditCheckIn.Edit,
+                                    }
+                                  )}
+                                  onClick={() => {
+                                    handleBack(EditCheckIn.Id);
+                                  }}
+                                >
+                                  <button
+                                    className={classNames(
+                                      "rounded-full hover:text-xl duration-100 ",
+                                      {
+                                        "text-xl p-1 bg-green-500 rounded-lg hover:text-2xl duration-100 hover:text-white ":
+                                          EditCheckIn.Delete ||
+                                          EditCheckIn.Edit,
+                                      }
+                                    )}
+                                  >
+                                    <IoIosArrowUp />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+                      </>
+                    ) : (
+                      <div
+                        className="flex items-center"
+                        onClick={() => {
+                          handleViewCheckIn(info.Id);
+                        }}
+                      >
+                        <div className="font-bold px-1">{info.Name}</div>
+                        <div className="font-light text-sm">
+                          {getCategoryEmoji(info.Category)}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  );
 }
 
-
-export default TippaMap;
-
+export default TMap;

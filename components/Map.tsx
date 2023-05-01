@@ -22,6 +22,8 @@ import ClusteredMarkers from "./ClusteredMarkers";
 import { Timestamp } from "firebase/firestore";
 import { handleGoogleSignIn, handleLogout } from "./Auth";
 import classNames from "classnames";
+import { randomPoints } from "./DefaultMarkers";
+
 
 function TMap() {
   //Loadmap//////////////////////////////////////////////////////////////////
@@ -31,13 +33,7 @@ function TMap() {
     zoom: 1,
   });
 
-  const [showLabels, setShowLabels] = useState(false);
-
-
-
-
   const mapRef = useRef<MapRef>(null);
-
 
   const centerMap = useCallback(
     ({
@@ -85,7 +81,7 @@ function TMap() {
     Date: Date | null;
     Id: string | null;
   }>({
-    ViewList: false,
+    ViewList: true,
     ViewCheckIn: false,
     Edit: false,
     Delete: false,
@@ -304,13 +300,13 @@ function TMap() {
             ref={mapRef}
             {...viewState}
             onMove={(evt) => setViewState(evt.viewState)}
-            mapStyle="mapbox://styles/mapbox/light-v9"
+            mapStyle="mapbox://styles/mapbox/streets-v9"
             projection="globe"
             mapboxAccessToken="pk.eyJ1IjoidGlwcGEyNCIsImEiOiJjbGV1OXl4N2YwaDdtM3hvN2s3dmJmZ3RrIn0.UiNTxwBUS-qZtflxbR0Wpw"
             onLoad={() => setMapLoaded(true)}
           >
-            {user && mapLoaded && (
-              <ClusteredMarkers data={geoJSONData} zoom={viewState.zoom} />
+            {mapLoaded && (
+              <ClusteredMarkers data={user ? geoJSONData : randomPoints} zoom={viewState.zoom} />
             )}
 
             <div>
@@ -446,7 +442,7 @@ function TMap() {
                     {
                       "bg-gradient-to-r from-green-500 to-blue-500 text-white hover:text-gradient-to-r   hover:scale-105 transition duration-200 hover:text-slate-100":
                         !user,
-                      "bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500 opacity-80 hover:scale-105 hover:text-white hover:opacity-100  transition":
+                      "bg-clip-text text-transparent bg-gradient-to-r from-green-500 to-blue-500 opacity-80 hover:scale-105 hover:border-2 transition duration-150":
                         user,
                     }
                   )}
@@ -488,7 +484,7 @@ function TMap() {
           {user && (
             <button
               className={classNames(
-                "absolute bottom-8 left-1 rounded-lg px-2 py-1  z-40 text-2xl",
+                "absolute bottom-20 sm:bottom-8 left-1 rounded-lg px-2 py-1  z-40 text-2xl",
                 {
                   " text-green-500 opacity-70 hover:opacity-100 hover:bg-green-500 hover:text-white ":
                     EditCheckIn.ViewList,
@@ -508,19 +504,19 @@ function TMap() {
           )}
 
           {user && (
-            <div className=" absolute flex max-w-[100vw] top-10 z-40 left-1/2 -translate-x-1/2 items-center overflow-x-auto scrollbar-hide">
+            <div className=" absolute flex max-w-[100vw]  top-14 sm:top-10 z-40 left-1/2 -translate-x-1/2 items-start overflow-x-auto scrollbar-hide">
               {EditCheckIn.ViewList &&
                 geoJSONData.map((info) => (
                   <div
                     key={info.Id}
                     className={classNames(
-                      "flex whitespace-nowrap  items-center ",
+                      "flex whitespace-nowrap",
                       {
                         "  p-1 m-2 hover:scale-105 transition duration-200 bg-gray-100 bg-opacity-25 border-green-500 border  hover:bg-opacity-80 rounded-xl shadow-lg hover:shadow-xl ":
                           EditCheckIn.ViewCheckIn && EditCheckIn.Id === info.Id,
                         "  p-1 m-2  bg-gray-100 shadow-sm rounded-lg hover:shadow-lg hover:bg-green-500 hover:scale-105 active:scale-90 transition-scale duration-100 ease-out":
                           !EditCheckIn.ViewCheckIn,
-                        " p-1 m-2  bg-gray-100 scale-90 hover:scale-100 transition duration-150 rounded-lg":
+                        " p-1 m-2  bg-gray-100 scale-90 hover:scale-100 hover:bg-green-200 transition duration-150 rounded-lg":
                           EditCheckIn.ViewCheckIn && EditCheckIn.Id !== info.Id,
                       }
                     )}

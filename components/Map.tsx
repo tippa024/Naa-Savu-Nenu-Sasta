@@ -13,10 +13,8 @@ import {
   deleteCheckInFromFirestore,
 } from "@/firebase/firebaseHelpers";
 import { getAuth, onAuthStateChanged, User } from "firebase/auth";
-import { AiOutlineEdit, AiOutlineLogout } from "react-icons/ai";
 import { MdEdit, MdDelete, MdOutlineCancel } from "react-icons/md";
 import { IoIosArrowUp } from "react-icons/io";
-
 import { categoryOptions, getCategoryEmoji } from "./Category";
 import ClusteredMarkers from "./ClusteredMarkers";
 import { Timestamp } from "firebase/firestore";
@@ -216,10 +214,13 @@ function TMap() {
         }));
       }
 
+      const newZoom = viewState.zoom < 12 ? 12 : viewState.zoom; // Setting zoom level
+
+
       centerMap({
         longitude: checkIn.Location.Longitude,
         latitude: checkIn.Location.Latitude,
-        zoom: viewState.zoom,
+        zoom: newZoom,
         duration: 2000,
       });
     }
@@ -474,21 +475,20 @@ function TMap() {
 
         {user && (
           <button
-            className="absolute top-1 right-1 z-10  text-gray-500 opacity-50 text-xl bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-red-500 hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
+            className="absolute top-1 right-1 z-10  text-gray-500 opacity-50 bg-transparent rounded-lg px-2 py-1 font-semibold hover:bg-red-500 hover:text-white  hover:opacity-100 hover:shadow-lg active:scale-90 transition duration-100 active:shadow-xl"
             onClick={() => handleLogout()}
-          >
-            <AiOutlineLogout />
+          > Log Out
           </button>
         )}
         <div>
           {user && (
             <button
               className={classNames(
-                "absolute bottom-20 sm:bottom-8 left-1 rounded-lg px-2 py-1  z-40 text-2xl",
+                "absolute top-1 left-1  text-gray-500 opacity-50 rounded-lg p-1 m-1 z-40 font-semibold",
                 {
-                  " text-green-500 opacity-70 hover:opacity-100 hover:bg-green-500 hover:text-white ":
+                  "  hover:opacity-100 hover:bg-red-500 hover:text-white hover:scale-105 transition-scale duration-100":
                     EditCheckIn.ViewList,
-                  "text-gray-500 opacity-50 hover:bg-green-500 hover:opacity-100 hover:text-white":
+                  "  hover:bg-green-500 hover:opacity-100 hover:text-white hover:scale-105 transition-scale duration-100":
                     !EditCheckIn.ViewList,
                 }
               )}
@@ -499,7 +499,9 @@ function TMap() {
                 }))
               }
             >
-              <AiOutlineEdit />
+              {EditCheckIn.ViewList ? "Close List" : "View CheckIns"}
+
+
             </button>
           )}
 
@@ -516,7 +518,7 @@ function TMap() {
                           EditCheckIn.ViewCheckIn && EditCheckIn.Id === info.Id,
                         "  p-1 m-2  bg-gray-100 shadow-sm rounded-lg hover:shadow-lg hover:bg-green-500 hover:scale-105 active:scale-90 transition-scale duration-100 ease-out":
                           !EditCheckIn.ViewCheckIn,
-                        " p-1 m-2  bg-gray-100 scale-90 hover:scale-100 hover:bg-green-200 transition duration-150 rounded-lg":
+                        " p-1 m-2  bg-gray-100 scale-90 hover:scale-100 hover:bg-green-500 transition duration-150 rounded-lg":
                           EditCheckIn.ViewCheckIn && EditCheckIn.Id !== info.Id,
                       }
                     )}
